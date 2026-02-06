@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metaclaw.local/schemas/capsule.manifest.v1.json",
+  "title": "MetaClaw Capsule Manifest v1",
+  "type": "object",
+  "required": ["version", "capsuleId", "digests", "runtimeCompatibility", "locks"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": "metaclaw.capsule/v1"},
+    "capsuleId": {"type": "string"},
+    "sourceClawfile": {"type": "string"},
+    "digests": {"type": "object"},
+    "runtimeCompatibility": {
+      "type": "object",
+      "required": ["targets", "semantics"],
+      "properties": {
+        "targets": {"type": "array", "items": {"type": "string"}},
+        "semantics": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "locks": {
+      "type": "object",
+      "required": ["dependency", "image", "source"],
+      "properties": {
+        "dependency": {"type": "string"},
+        "image": {"type": "string"},
+        "source": {"type": "string"}
+      }
+    }
+  }
+}

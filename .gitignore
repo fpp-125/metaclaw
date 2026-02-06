@@ -1,0 +1,7 @@
+.metaclaw/
+*.db
+*.log
+*.out
+/tmp/
+metaclaw
+.DS_Store

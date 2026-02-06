@@ -1,0 +1,13 @@
+apiVersion: metaclaw/v1
+kind: Agent
+agent:
+  name: hello
+  species: nano
+  lifecycle: ephemeral
+  habitat:
+    network:
+      mode: none
+  command:
+    - sh
+    - -lc
+    - echo "hello from testdata"

@@ -1,0 +1,63 @@
+package compiler
+
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/metaclaw/metaclaw/internal/capsule"
+	"github.com/metaclaw/metaclaw/internal/claw/parse"
+	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
+	"github.com/metaclaw/metaclaw/internal/claw/validate"
+	"github.com/metaclaw/metaclaw/internal/locks"
+	"github.com/metaclaw/metaclaw/internal/policy"
+)
+
+type Result struct {
+	Config  v1.Clawfile
+	Policy  policy.Policy
+	Locks   locks.BundleLocks
+	Capsule capsule.Capsule
+}
+
+func LoadNormalize(path string) (v1.Clawfile, error) {
+	cfg, err := parse.File(path)
+	if err != nil {
+		return v1.Clawfile{}, err
+	}
+	n, err := validate.NormalizeAndValidate(cfg, path)
+	if err != nil {
+		return v1.Clawfile{}, err
+	}
+	return n, nil
+}
+
+func Compile(path string, outputDir string) (Result, error) {
+	normalized, err := LoadNormalize(path)
+	if err != nil {
+		return Result{}, err
+	}
+	pol, err := policy.Compile(normalized)
+	if err != nil {
+		return Result{}, err
+	}
+	lk, err := locks.Generate(normalized, path, outputDir)
+	if err != nil {
+		return Result{}, err
+	}
+
+	ir := map[string]any{
+		"version":  "metaclaw.ir/v1",
+		"clawfile": normalized,
+		"runtime": map[string]any{
+			"target": normalized.Agent.Runtime.Target,
+			"image":  normalized.Agent.Runtime.Image,
+		},
+		"sourceRoot": filepath.Dir(path),
+	}
+
+	cap, err := capsule.Write(outputDir, path, ir, pol, lk)
+	if err != nil {
+		return Result{}, fmt.Errorf("write capsule: %w", err)
+	}
+	return Result{Config: normalized, Policy: pol, Locks: lk, Capsule: cap}, nil
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metaclaw.local/schemas/clawfile.v1.json",
+  "title": "MetaClaw Clawfile v1",
+  "type": "object",
+  "required": ["apiVersion", "kind", "agent"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"const": "metaclaw/v1"},
+    "kind": {"const": "Agent"},
+    "agent": {
+      "type": "object",
+      "required": ["name", "species"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "species": {"enum": ["nano", "micro", "mega"]},
+        "lifecycle": {"enum": ["ephemeral", "daemon", "debug"]},
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {"enum": ["podman", "apple_container", "docker"]},
+            "image": {"type": "string", "pattern": ".+@sha256:[a-fA-F0-9]{64}$"}
+          }
+        }
+      }
+    }
+  }
+}
