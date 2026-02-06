@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	integrationImage = "alpine:3.20@sha256:77726ef25f24bcc9d8e059309a8929574b2f13f0707cde656d2d7b82f83049c4"
+	integrationImage = "alpine:3.20@sha256:a4f4213abb84c497377b8544c81b3564f313746700372ec4fe84653e4fb03805"
 )
 
 func TestE2ERuntimeEphemeralSuccess(t *testing.T) {

@@ -3,7 +3,7 @@ package v1
 var speciesProfiles = map[Species]SpeciesProfile{
 	SpeciesNano: {
 		Name:         SpeciesNano,
-		DefaultImage: "alpine:3.20@sha256:77726ef25f24bcc9d8e059309a8929574b2f13f0707cde656d2d7b82f83049c4",
+		DefaultImage: "alpine:3.20@sha256:a4f4213abb84c497377b8544c81b3564f313746700372ec4fe84653e4fb03805",
 		DefaultCPU:   "0.25",
 		DefaultMem:   "256m",
 		RuntimeHints: []string{"wasm_preferred"},
@@ -14,7 +14,7 @@ var speciesProfiles = map[Species]SpeciesProfile{
 	},
 	SpeciesMicro: {
 		Name:         SpeciesMicro,
-		DefaultImage: "alpine:3.20@sha256:77726ef25f24bcc9d8e059309a8929574b2f13f0707cde656d2d7b82f83049c4",
+		DefaultImage: "alpine:3.20@sha256:a4f4213abb84c497377b8544c81b3564f313746700372ec4fe84653e4fb03805",
 		DefaultCPU:   "1",
 		DefaultMem:   "512m",
 		RuntimeHints: []string{"container_default"},
@@ -25,7 +25,7 @@ var speciesProfiles = map[Species]SpeciesProfile{
 	},
 	SpeciesMega: {
 		Name:         SpeciesMega,
-		DefaultImage: "ubuntu:24.04@sha256:c35e29c9450151419d9448b0fd75374fec4fff364a27f176fb458d472dfc9e54",
+		DefaultImage: "ubuntu:24.04@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f200828b2b",
 		DefaultCPU:   "2",
 		DefaultMem:   "2g",
 		RuntimeHints: []string{"container_heavy"},
