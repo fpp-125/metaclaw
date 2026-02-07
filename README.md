@@ -138,6 +138,31 @@ GOMODCACHE=/tmp/metaclaw-go/pkg/mod \
 go test ./...
 ```
 
+## Pre-commit Secret Scan
+
+Enable the repo hook that blocks commits when `gitleaks` detects secrets in staged changes:
+
+```bash
+brew install gitleaks
+./scripts/setup-hooks.sh
+```
+
+Manual scan options:
+
+```bash
+# staged changes (same as pre-commit hook)
+./scripts/scan-secrets.sh --staged
+
+# full git history/worktree mode supported by your installed gitleaks
+./scripts/scan-secrets.sh --repo
+```
+
+One-time bypass (not recommended):
+
+```bash
+METACLAW_SKIP_SECRET_SCAN=1 git commit -m "..."
+```
+
 ## Runtime E2E Integration Tests
 
 Integration tests that execute real containers live in `internal/manager/manager_integration_test.go`.

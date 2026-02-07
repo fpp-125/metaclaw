@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${METACLAW_SKIP_SECRET_SCAN:-}" = "1" ]; then
+  echo "pre-commit: skipping secret scan (METACLAW_SKIP_SECRET_SCAN=1)"
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+"$repo_root/scripts/scan-secrets.sh" --staged
