@@ -16,16 +16,6 @@ From LLMs, to agent apps (such as Manus), and further to fully managed agent exe
 
 MetaClaw is not trying to be a bigger black-box agent platform. Instead, it provides a local-first, auditable, and constrained infrastructure layer for agents: a daemonless CLI for orchestration, isolated runtimes for execution, and policy-plus-lock mechanisms for reproducibility and governance. The result is automation that not only runs, but remains controllable, inspectable, and sustainable to evolve.
 
-MetaClaw is a local-first infrastructure engine for AI agents.
-
-MetaClaw provides a daemonless Go CLI that:
-- Parses and validates `.claw` files.
-- Compiles `.claw` into immutable `ClawCapsule` bundles.
-- Enforces deny-by-default habitat policies.
-- Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
-- Supports both one-shot ephemeral runs and long-running detached agent containers (`--detach`).
-- Stores lifecycle state in SQLite and logs events as JSONL.
-
 ## Repository Boundary
 
 This repo contains engine capabilities only.
@@ -70,6 +60,18 @@ This repo contains engine capabilities only.
 ## MetaClaw Execution Model
 
 ![MetaClaw Workflow](docs/diagrams/metaclaw-workflow.svg)
+
+## Core Capabilities
+
+MetaClaw is a local-first infrastructure engine for AI agents.
+
+MetaClaw provides a daemonless Go CLI that:
+- Parses and validates `.claw` files.
+- Compiles `.claw` into immutable `ClawCapsule` bundles.
+- Enforces deny-by-default habitat policies.
+- Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
+- Supports both one-shot ephemeral runs and long-running detached agent containers (`--detach`).
+- Stores lifecycle state in SQLite and logs events as JSONL.
 
 ## Commands
 
