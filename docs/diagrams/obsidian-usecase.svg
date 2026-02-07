@@ -117,9 +117,9 @@
 
   <path d="M 915 320 C 915 350, 915 360, 915 392" class="linkSoft"/>
   <path d="M 1188 320 C 1188 350, 1188 360, 1188 392" class="linkWarn"/>
-  <path d="M 260 320 C 260 350, 260 360, 260 392" class="linkSoft"/>
+  <path d="M 554 320 C 554 350, 554 360, 554 392" class="linkSoft"/>
 
   <text x="728" y="347" class="small">engine outputs guarantees and traces</text>
   <text x="1030" y="347" class="small">networked calls only when enabled</text>
-  <text x="154" y="347" class="small">intent and policy flow into execution</text>
+  <text x="394" y="347" class="small">vault mount/save constraints come from bot definition</text>
 </svg>
