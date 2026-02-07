@@ -1,4 +1,4 @@
-<svg width="1400" height="760" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw Obsidian bot workflow">
+<svg width="1400" height="760" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw agent execution workflow">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0b1220"/>
@@ -52,8 +52,8 @@
   <circle cx="1200" cy="140" r="180" fill="#38bdf8" opacity="0.10"/>
   <circle cx="250" cy="690" r="220" fill="#22c55e" opacity="0.08"/>
 
-  <text x="56" y="70" class="title">MetaClaw Obsidian Bot Workflow</text>
-  <text x="56" y="102" class="subtitle">Loop: user intent -> bot definition -> engine compile/run -> isolated habitat -> bot execution -> controlled save</text>
+  <text x="56" y="70" class="title">MetaClaw Agent Execution Workflow</text>
+  <text x="56" y="102" class="subtitle">Loop: intent -> agent definition -> engine compile/run -> isolated habitat -> bot execution -> controlled outputs</text>
 
   <rect x="56" y="150" width="260" height="182" rx="18" fill="url(#cardA)" filter="url(#shadow)"/>
   <rect x="56" y="150" width="260" height="182" rx="18" fill="url(#panel)"/>
@@ -65,7 +65,7 @@
 
   <rect x="340" y="150" width="310" height="182" rx="18" fill="url(#cardB)" filter="url(#shadow)"/>
   <rect x="340" y="150" width="310" height="182" rx="18" fill="url(#panel)"/>
-  <text x="364" y="194" class="h">Bot Definition</text>
+  <text x="364" y="194" class="h">Agent Definition</text>
   <text x="364" y="222" class="b">- Clawfile policy + mounts + lifecycle</text>
   <text x="364" y="247" class="b">- Bot code/image entrypoint</text>
   <text x="364" y="272" class="b">- Skills + memory/retrieval config</text>
@@ -93,12 +93,12 @@
 
   <rect x="56" y="420" width="420" height="250" rx="20" fill="url(#cardD)" filter="url(#shadow)"/>
   <rect x="56" y="420" width="420" height="250" rx="20" fill="url(#panel)"/>
-  <text x="84" y="464" class="h">Obsidian Vault + Host Paths</text>
-  <text x="84" y="492" class="b">- Vault mounted read-only in habitat</text>
-  <text x="84" y="517" class="b">- Host runtime/config paths outside vault</text>
-  <text x="84" y="542" class="b">- Save operation performed on host side</text>
-  <text x="84" y="567" class="b">- Write audit and history in host logs</text>
-  <text x="84" y="600" class="small">No overlapping mount shortcut to writable vault path</text>
+  <text x="84" y="464" class="h">Data + Host Integrations</text>
+  <text x="84" y="492" class="b">- Explicit mounts define accessible data</text>
+  <text x="84" y="517" class="b">- Host runtime/config paths outside habitat</text>
+  <text x="84" y="542" class="b">- Controlled write-back via host-side flow</text>
+  <text x="84" y="567" class="b">- Auditable logs and state on host</text>
+  <text x="84" y="600" class="small">No implicit access outside declared habitat boundaries</text>
 
   <rect x="500" y="420" width="420" height="250" rx="20" fill="#0b203a" opacity="0.95" filter="url(#shadow)"/>
   <rect x="500" y="420" width="420" height="250" rx="20" fill="url(#panel)"/>
@@ -111,12 +111,12 @@
 
   <rect x="944" y="420" width="402" height="250" rx="20" fill="#10233f" opacity="0.95" filter="url(#shadow)"/>
   <rect x="944" y="420" width="402" height="250" rx="20" fill="url(#panel)"/>
-  <text x="972" y="464" class="h">LLM + Web Providers</text>
-  <text x="972" y="492" class="b">- Gemini OpenAI-compatible endpoint</text>
-  <text x="972" y="517" class="b">- Tavily search only when outbound enabled</text>
+  <text x="972" y="464" class="h">Models + External Tools</text>
+  <text x="972" y="492" class="b">- OpenAI-compatible or custom endpoints</text>
+  <text x="972" y="517" class="b">- External tools only when policy allows</text>
   <text x="972" y="542" class="b">- Keys injected by env name (runtime only)</text>
-  <text x="972" y="567" class="b">- No key persisted in `.claw` or capsule</text>
-  <text x="972" y="600" class="small">Default network mode remains `none`</text>
+  <text x="972" y="567" class="b">- No secret persisted in `.claw` or capsule</text>
+  <text x="972" y="600" class="small">Default network mode remains `none` unless allowed</text>
 
   <path d="M 316 241 C 324 241, 332 241, 340 241" class="link"/>
   <path d="M 650 241 C 658 241, 666 241, 674 241" class="link"/>

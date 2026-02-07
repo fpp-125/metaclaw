@@ -67,6 +67,10 @@ This repo contains engine capabilities only.
 
 ![MetaClaw Architecture](docs/diagrams/metaclaw-architecture.svg)
 
+## MetaClaw Execution Model
+
+![MetaClaw Workflow](docs/diagrams/metaclaw-workflow.svg)
+
 ## Commands
 
 Most users only need this flow to get started:
@@ -138,73 +142,6 @@ metaclaw release agent.claw --strict --state-dir=.metaclaw
 # Verify signed release bundle (signature + capsule digest integrity)
 metaclaw verify .metaclaw/releases/rel_<release-id>
 ```
-
-## Obsidian Bot Wizard
-
-Run step-by-step interactive wizard:
-
-```bash
-metaclaw wizard
-```
-
-Or generate with explicit flags:
-
-```bash
-metaclaw wizard \
-  --project-dir=./my-obsidian-bot \
-  --provider=gemini_openai \
-  --model=gemini-2.5-pro \
-  --network=outbound
-```
-
-Default project layout (isolated):
-- `my-obsidian-bot/agent.claw`
-- `my-obsidian-bot/vault/`
-- `my-obsidian-bot/config/`
-- `my-obsidian-bot/logs/`
-
-Then inject key at runtime (not stored in Clawfile/capsule):
-
-```bash
-export GEMINI_API_KEY=...
-metaclaw run my-obsidian-bot/agent.claw --llm-api-key-env=GEMINI_API_KEY
-```
-
-Useful flags:
-- `--project-dir` to keep vault/config/logs/claw in one dedicated folder.
-- `--read-only` for read-only vault mount.
-- `--provider=openai_compatible` for OpenAI-style endpoints.
-- `--provider=none` to scaffold without LLM wiring.
-
-## Obsidian End-to-End Example
-
-![Obsidian Workflow](docs/diagrams/obsidian-usecase.svg)
-
-Complete runnable reference lives in:
-- https://github.com/fpp-125/metaclaw-examples/tree/main/examples/obsidian-terminal-bot-advanced
-
-Quick flow:
-
-```bash
-# 1) clone examples repo and enter advanced bot
-git clone https://github.com/fpp-125/metaclaw-examples.git
-cd metaclaw-examples/examples/obsidian-terminal-bot-advanced
-
-# 2) edit mount source paths in agent.claw
-
-# 3) build image and pin digest back into agent.claw
-./build_image.sh
-
-# 4) run with runtime-only secrets
-export GEMINI_API_KEY=...
-export TAVILY_API_KEY=...
-METACLAW_BIN=/abs/path/to/metaclaw ./chat.sh
-```
-
-The loop is explicit and reproducible:
-- business logic in image layer
-- `agent.claw` declares policy/runtime/mounts only
-- secrets injected at run time, not committed into capsule/clawfile
 
 ## Security Model
 
