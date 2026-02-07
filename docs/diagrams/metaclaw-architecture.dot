@@ -12,7 +12,7 @@ digraph MetaClaw {
   runtimes [label="Apple | Podman | Docker"];
   container [label="Agent Container"];
   state [label="SQLite + Events"];
-  ecosystem [label="Examples / Skills / Nano-QMD"];
+  ecosystem [label="Examples / Skills / Third-party Memory/Eval"];
   security [label="Security Protocol"];
 
   user -> cli;
