@@ -67,7 +67,7 @@
 
   <rect x="86" y="188" width="280" height="136" rx="16" fill="url(#cardPurple)" filter="url(#shadow)"/>
   <text x="106" y="226" class="h">Intent</text>
-  <text x="106" y="252" class="small">目标 / constraints / risk level</text>
+  <text x="106" y="252" class="small">goals / constraints / risk level</text>
   <text x="106" y="276" class="small">who approves what</text>
 
   <rect x="408" y="188" width="360" height="136" rx="16" fill="url(#cardBlue)" filter="url(#shadow)"/>
@@ -107,11 +107,12 @@
 
   <rect x="944" y="686" width="372" height="104" rx="14" fill="url(#cardSlate)" filter="url(#shadow)"/>
   <text x="966" y="720" class="h">Outputs + Integrations</text>
-  <text x="966" y="746" class="small">models/tools used under policy, controlled write-back</text>
+  <text x="966" y="746" class="small">models/tools used under policy,</text>
+  <text x="966" y="770" class="small">controlled write-back</text>
 
   <path d="M 366 256 C 382 256, 392 256, 408 256" class="link"/>
   <path d="M 768 256 C 784 256, 794 256, 810 256" class="link"/>
-  <path d="M 1062 324 C 1062 360, 980 396, 980 424" class="link"/>
-  <path d="M 980 586 C 980 620, 980 646, 980 686" class="link"/>
-  <path d="M 122 746 C 40 720, 32 232, 86 228" class="loop"/>
+  <path d="M 700 342 L 700 370" class="loop"/>
+  <path d="M 700 606 L 700 634" class="loop"/>
+  <path d="M 56 719 L 12 719 L 12 240 L 56 240" class="loop"/>
 </svg>
