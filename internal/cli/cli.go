@@ -151,6 +151,7 @@ func runRun(ctx context.Context, args []string) int {
 		"--state-dir":       true,
 		"--llm-api-key":     true,
 		"--llm-api-key-env": true,
+		"--secret-env":      true,
 	})
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	var detach bool
@@ -158,17 +159,19 @@ func runRun(ctx context.Context, args []string) int {
 	var stateDir string
 	var llmAPIKey string
 	var llmAPIKeyEnv string
+	var secretEnvNames stringListFlag
 	fs.BoolVar(&detach, "detach", false, "run in background")
 	fs.StringVar(&runtimeOverride, "runtime", "", "runtime override (podman|apple_container|docker)")
 	fs.StringVar(&stateDir, "state-dir", ".metaclaw", "state directory")
 	fs.StringVar(&llmAPIKey, "llm-api-key", "", "LLM API key (prefer --llm-api-key-env for better secret hygiene)")
 	fs.StringVar(&llmAPIKeyEnv, "llm-api-key-env", "", "host env variable name to read LLM API key from")
+	fs.Var(&secretEnvNames, "secret-env", "host env variable to inject securely at runtime (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	remaining := fs.Args()
 	if len(remaining) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: metaclaw run <file.claw|capsule_dir> [--detach] [--runtime=..] [--state-dir=.metaclaw] [--llm-api-key=..|--llm-api-key-env=..]")
+		fmt.Fprintln(os.Stderr, "usage: metaclaw run <file.claw|capsule_dir> [--detach] [--runtime=..] [--state-dir=.metaclaw] [--llm-api-key=..|--llm-api-key-env=..] [--secret-env=NAME ...]")
 		return 1
 	}
 	m, err := manager.New(stateDir)
@@ -184,6 +187,7 @@ func runRun(ctx context.Context, args []string) int {
 		RuntimeOverride: runtimeOverride,
 		LLMAPIKey:       llmAPIKey,
 		LLMAPIKeyEnv:    llmAPIKeyEnv,
+		SecretEnvs:      secretEnvNames.Values(),
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
@@ -418,7 +422,7 @@ commands:
   keygen [--private-key=.metaclaw/keys/release.ed25519.pem] [--public-key=.metaclaw/keys/release.ed25519.pub.pem] [--force]
   release <file.claw|capsule_dir> [--strict] [--state-dir=.metaclaw] [--out=dir] [--sign-key=path] [--key-id=id]
   verify <release_dir|capsule_dir> [--public-key=path] [--require-release]
-  run <file.claw|capsule_dir> [--detach] [--runtime=podman|apple_container|docker] [--llm-api-key=..|--llm-api-key-env=..]
+  run <file.claw|capsule_dir> [--detach] [--runtime=podman|apple_container|docker] [--llm-api-key=..|--llm-api-key-env=..] [--secret-env=NAME ...]
   ps [--json]
   logs <run-id> [--follow]
   inspect <run-id|capsule-dir> [--json]
@@ -435,4 +439,23 @@ func IsSecurityOverrideFlag(args []string) error {
 		}
 	}
 	return nil
+}
+
+type stringListFlag struct {
+	values []string
+}
+
+func (f *stringListFlag) String() string {
+	return strings.Join(f.values, ",")
+}
+
+func (f *stringListFlag) Set(value string) error {
+	f.values = append(f.values, value)
+	return nil
+}
+
+func (f *stringListFlag) Values() []string {
+	out := make([]string, len(f.values))
+	copy(out, f.values)
+	return out
 }

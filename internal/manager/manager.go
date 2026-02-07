@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,6 +34,7 @@ type RunOptions struct {
 	RuntimeOverride string
 	LLMAPIKey       string
 	LLMAPIKeyEnv    string
+	SecretEnvs      []string
 }
 
 type RunOutcome struct {
@@ -77,7 +80,11 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 	if err != nil {
 		return store.RunRecord{}, err
 	}
-	env := mergeEnv(cfg.Agent.Habitat.Env, resolvedLLM.Env)
+	resolvedSecrets, err := resolveHostSecretEnvs(opts.SecretEnvs)
+	if err != nil {
+		return store.RunRecord{}, err
+	}
+	env := mergeEnv(cfg.Agent.Habitat.Env, resolvedLLM.Env, resolvedSecrets)
 
 	runID := makeRunID()
 	rec := store.RunRecord{
@@ -318,15 +325,57 @@ func writeRunOutput(stateDir, runID, fileName, content string) error {
 
 func intPtr(v int) *int { return &v }
 
-func mergeEnv(base map[string]string, overlay map[string]string) map[string]string {
-	out := make(map[string]string, len(base)+len(overlay))
-	for k, v := range base {
-		out[k] = v
+func mergeEnv(maps ...map[string]string) map[string]string {
+	return mergeEnvMany(maps...)
+}
+
+func mergeEnvMany(maps ...map[string]string) map[string]string {
+	total := 0
+	for _, m := range maps {
+		total += len(m)
 	}
-	for k, v := range overlay {
-		out[k] = v
+	out := make(map[string]string, total)
+	for _, m := range maps {
+		for k, v := range m {
+			out[k] = v
+		}
 	}
 	return out
+}
+
+var envNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+func resolveHostSecretEnvs(names []string) (map[string]string, error) {
+	if len(names) == 0 {
+		return map[string]string{}, nil
+	}
+	normalized := make([]string, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, raw := range names {
+		name := strings.TrimSpace(raw)
+		if name == "" {
+			continue
+		}
+		if !envNameRe.MatchString(name) {
+			return nil, fmt.Errorf("invalid --secret-env name: %q", raw)
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		normalized = append(normalized, name)
+	}
+	sort.Strings(normalized)
+
+	out := make(map[string]string, len(normalized))
+	for _, name := range normalized {
+		value := os.Getenv(name)
+		if strings.TrimSpace(value) == "" {
+			return nil, fmt.Errorf("host env %s is empty", name)
+		}
+		out[name] = value
+	}
+	return out, nil
 }
 
 func (m *Manager) refreshRunStatus(ctx context.Context, rec store.RunRecord) (store.RunRecord, error) {

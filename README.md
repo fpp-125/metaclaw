@@ -53,6 +53,9 @@ metaclaw run agent.claw --detach
 
 # Inject LLM key at runtime (recommended secret hygiene)
 metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY
+
+# Inject additional runtime-only secrets (repeatable)
+metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY --secret-env=TAVILY_API_KEY
 ```
 
 Runtime control and debugging:
@@ -147,6 +150,7 @@ Useful flags:
 - LLM keys are injected at run time (`--llm-api-key-env` recommended), not stored in capsule artifacts.
 - Runtime adapters pass env by key reference (`-e KEY`) instead of inlining `KEY=value` in process args.
 - Strict release mode (`metaclaw release --strict`) blocks risky configs such as `network: all` and produces signed provenance artifacts.
+- Additional runtime-only secrets can be injected with `--secret-env=NAME` (host env -> runtime env, not stored in Clawfile/capsule).
 
 ## LLM Provider Contract
 
