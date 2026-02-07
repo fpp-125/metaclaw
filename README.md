@@ -16,13 +16,6 @@ From LLMs, to agent apps (such as Manus), and further to fully managed agent exe
 
 MetaClaw is not trying to be a bigger black-box agent platform. Instead, it provides a local-first, auditable, and constrained infrastructure layer for agents: a daemonless CLI for orchestration, isolated runtimes for execution, and policy-plus-lock mechanisms for reproducibility and governance. The result is automation that not only runs, but remains controllable, inspectable, and sustainable to evolve.
 
-## Repository Boundary
-
-This repo contains engine capabilities only.
-
-- includes: CLI (`init/validate/compile/run/ps/logs/inspect/debug`), Clawfile schemas, compiler/locks/policy, runtime adapters, state store
-- excludes: concrete business bots/workflows, reusable skill catalog content, registry backend service implementation
-
 ## Ecosystem Repo Map
 
 ![Ecosystem Repo Map](docs/diagrams/ecosystem-repo-map.svg)
