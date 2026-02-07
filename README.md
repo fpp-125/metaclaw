@@ -199,6 +199,12 @@ GOMODCACHE=/tmp/metaclaw-go/pkg/mod \
 go test ./...
 ```
 
+Coverage tip (for mixed local/toolchain Go installs):
+
+```bash
+PATH="$(go env GOROOT)/bin:$PATH" go test -cover ./...
+```
+
 ## Pre-commit Secret Scan
 
 Enable the repo hook that blocks commits when `gitleaks` detects secrets in staged changes:
