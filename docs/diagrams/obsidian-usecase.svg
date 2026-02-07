@@ -1,4 +1,4 @@
-<svg width="1400" height="860" viewBox="0 0 1400 860" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw Obsidian workflow diagram">
+<svg width="1400" height="620" viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw Obsidian workflow diagram">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0b1220"/>
@@ -45,9 +45,9 @@
     </style>
   </defs>
 
-  <rect width="1400" height="860" fill="url(#bg)"/>
+  <rect width="1400" height="620" fill="url(#bg)"/>
   <circle cx="1200" cy="130" r="180" fill="#38bdf8" opacity="0.10"/>
-  <circle cx="220" cy="760" r="220" fill="#22c55e" opacity="0.09"/>
+  <circle cx="220" cy="560" r="220" fill="#22c55e" opacity="0.09"/>
 
   <text x="62" y="72" class="title">MetaClaw Obsidian Bot Workflow</text>
   <text x="62" y="106" class="subtitle">Engine repo + example repo + runtime + external providers in one reproducible loop</text>
@@ -111,28 +111,6 @@
   <text x="1140" y="476" class="b">Tavily Web Search</text>
   <text x="1140" y="500" class="small">keys injected at runtime</text>
   <text x="1140" y="522" class="small">never stored in claw/capsule</text>
-
-  <rect x="56" y="626" width="1288" height="178" rx="20" fill="#020617" opacity="0.64"/>
-  <text x="86" y="668" class="h">Ecosystem Repos</text>
-  <rect x="86" y="686" width="305" height="88" rx="12" fill="#1d4ed8" opacity="0.90"/>
-  <text x="102" y="718" class="chip">metaclaw</text>
-  <text x="102" y="740" class="small">Engine core</text>
-  <text x="102" y="760" class="small">github.com/fpp-125/metaclaw</text>
-
-  <rect x="408" y="686" width="305" height="88" rx="12" fill="#0f766e" opacity="0.90"/>
-  <text x="424" y="718" class="chip">metaclaw-examples</text>
-  <text x="424" y="740" class="small">Runnable templates</text>
-  <text x="424" y="760" class="small">github.com/fpp-125/metaclaw-examples</text>
-
-  <rect x="730" y="686" width="305" height="88" rx="12" fill="#b45309" opacity="0.90"/>
-  <text x="746" y="718" class="chip">metaclaw-skills</text>
-  <text x="746" y="740" class="small">Reusable capabilities</text>
-  <text x="746" y="760" class="small">github.com/fpp-125/metaclaw-skills</text>
-
-  <rect x="1052" y="686" width="272" height="88" rx="12" fill="#7c3aed" opacity="0.90"/>
-  <text x="1068" y="718" class="chip">metaclaw-registry</text>
-  <text x="1068" y="740" class="small">Publish/distribution API</text>
-  <text x="1068" y="760" class="small">github.com/fpp-125/metaclaw-registry</text>
 
   <path d="M 382 238 C 410 238, 410 238, 430 238" class="line"/>
   <path d="M 382 470 C 410 470, 410 470, 430 470" class="line"/>
