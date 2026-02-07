@@ -1,130 +1,117 @@
-<svg width="1400" height="760" viewBox="0 0 1400 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw agent execution workflow">
+<svg width="1400" height="860" viewBox="0 0 1400 860" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw control loop architecture">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="55%" stop-color="#10243f"/>
-      <stop offset="100%" stop-color="#17365c"/>
+      <stop offset="0%" stop-color="#0a1222"/>
+      <stop offset="50%" stop-color="#10284a"/>
+      <stop offset="100%" stop-color="#17395e"/>
     </linearGradient>
-    <linearGradient id="cardA" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#6d28d9"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+    <linearGradient id="planeA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#4338ca"/>
     </linearGradient>
-    <linearGradient id="cardB" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#2563eb"/>
+    <linearGradient id="planeB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14532d"/>
+      <stop offset="100%" stop-color="#15803d"/>
     </linearGradient>
-    <linearGradient id="cardC" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#a16207"/>
+    <linearGradient id="planeC" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c2d12"/>
+      <stop offset="100%" stop-color="#c2410c"/>
+    </linearGradient>
+    <linearGradient id="cardBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="cardPurple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="cardAmber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
       <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
-    <linearGradient id="cardD" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f766e"/>
-      <stop offset="100%" stop-color="#0d9488"/>
-    </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    <linearGradient id="cardSlate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1e293b"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.35"/>
     </filter>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dbeafe"/>
     </marker>
     <marker id="arrowLoop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/>
     </marker>
     <style>
-      .title { font: 700 40px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
-      .subtitle { font: 500 19px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
-      .h { font: 700 22px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
-      .b { font: 500 16px 'Avenir Next', 'Segoe UI', sans-serif; fill: #e2e8f0; }
-      .small { font: 500 14px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
-      .chip { font: 700 15px 'Avenir Next', 'Segoe UI', sans-serif; fill: #fde68a; }
-      .link { stroke: #cbd5e1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .linkSoft { stroke: #93c5fd; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
-      .linkWarn { stroke: #fde68a; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
-      .loop { stroke: #34d399; stroke-width: 2.4; fill: none; marker-end: url(#arrowLoop); opacity: 0.92; }
+      .title { font: 700 44px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .subtitle { font: 500 20px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .plane { font: 700 20px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .h { font: 700 28px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .b { font: 500 18px 'Avenir Next', 'Segoe UI', sans-serif; fill: #e2e8f0; }
+      .small { font: 500 16px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .chip { font: 700 18px 'Avenir Next', 'Segoe UI', sans-serif; fill: #fde68a; }
+      .link { stroke: #dbeafe; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .loop { stroke: #34d399; stroke-width: 3; fill: none; marker-end: url(#arrowLoop); }
     </style>
   </defs>
 
-  <rect width="1400" height="760" fill="url(#bg)"/>
-  <circle cx="1200" cy="140" r="180" fill="#38bdf8" opacity="0.10"/>
-  <circle cx="250" cy="690" r="220" fill="#22c55e" opacity="0.08"/>
+  <rect width="1400" height="860" fill="url(#bg)"/>
+  <circle cx="1220" cy="160" r="200" fill="#38bdf8" opacity="0.10"/>
+  <circle cx="220" cy="760" r="230" fill="#22c55e" opacity="0.08"/>
 
-  <text x="56" y="70" class="title">MetaClaw Agent Execution Workflow</text>
-  <text x="56" y="102" class="subtitle">Loop: intent -> agent definition -> engine compile/run -> isolated habitat -> bot execution -> controlled outputs</text>
+  <text x="56" y="74" class="title">MetaClaw Control Loop</text>
+  <text x="56" y="108" class="subtitle">Define intent -> compile policies -> execute isolated bot -> collect evidence -> iterate safely</text>
 
-  <rect x="56" y="150" width="260" height="182" rx="18" fill="url(#cardA)" filter="url(#shadow)"/>
-  <rect x="56" y="150" width="260" height="182" rx="18" fill="url(#panel)"/>
-  <text x="78" y="194" class="h">User Intent</text>
-  <text x="78" y="222" class="b">- Defines target outcome</text>
-  <text x="78" y="247" class="b">- Chooses capability scope</text>
-  <text x="78" y="272" class="b">- Sets safety expectations</text>
-  <text x="78" y="297" class="b">- Keeps keys in host env</text>
+  <rect x="56" y="138" width="1288" height="204" rx="22" fill="url(#planeA)" opacity="0.32"/>
+  <text x="84" y="172" class="plane">Authoring Plane</text>
 
-  <rect x="340" y="150" width="310" height="182" rx="18" fill="url(#cardB)" filter="url(#shadow)"/>
-  <rect x="340" y="150" width="310" height="182" rx="18" fill="url(#panel)"/>
-  <text x="364" y="194" class="h">Agent Definition</text>
-  <text x="364" y="222" class="b">- Clawfile policy + mounts + lifecycle</text>
-  <text x="364" y="247" class="b">- Bot code/image entrypoint</text>
-  <text x="364" y="272" class="b">- Skills + memory/retrieval config</text>
-  <text x="364" y="297" class="b">- Example repo or custom project</text>
+  <rect x="86" y="188" width="280" height="136" rx="16" fill="url(#cardPurple)" filter="url(#shadow)"/>
+  <text x="106" y="226" class="h">Intent</text>
+  <text x="106" y="252" class="small">目标 / constraints / risk level</text>
+  <text x="106" y="276" class="small">who approves what</text>
 
-  <rect x="674" y="150" width="300" height="182" rx="18" fill="url(#cardC)" filter="url(#shadow)"/>
-  <rect x="674" y="150" width="300" height="182" rx="18" fill="url(#panel)"/>
-  <text x="698" y="194" class="h">MetaClaw Engine</text>
-  <text x="698" y="222" class="b">- validate -> compile -> run</text>
-  <text x="698" y="247" class="b">- enforce habitat policy gates</text>
-  <text x="698" y="272" class="b">- lifecycle: ephemeral or detached</text>
-  <text x="698" y="297" class="b">- inject secrets by env name only</text>
+  <rect x="408" y="188" width="360" height="136" rx="16" fill="url(#cardBlue)" filter="url(#shadow)"/>
+  <text x="430" y="226" class="h">Agent Definition</text>
+  <text x="430" y="252" class="small">Clawfile + skills + image entrypoint</text>
+  <text x="430" y="276" class="small">mount/network/lifecycle contract</text>
 
-  <rect x="998" y="138" width="348" height="206" rx="22" fill="#0f172a" opacity="0.95" filter="url(#shadow)"/>
-  <rect x="998" y="138" width="348" height="206" rx="22" fill="url(#panel)"/>
-  <text x="1022" y="182" class="h">Isolated Habitat (Per Bot)</text>
-  <text x="1022" y="210" class="b">- runtime boundary: Apple / Podman / Docker</text>
-  <text x="1022" y="235" class="b">- policy-enforced mounts/network/env</text>
-  <text x="1022" y="260" class="b">- one bot = one isolated workspace</text>
-  <text x="1022" y="285" class="b">- supports ephemeral and detached runs</text>
+  <rect x="810" y="188" width="504" height="136" rx="16" fill="url(#cardAmber)" filter="url(#shadow)"/>
+  <text x="832" y="226" class="h">MetaClaw Compiler</text>
+  <text x="832" y="252" class="small">validate -> policy compile -> capsule + locks</text>
+  <text x="832" y="276" class="small">runtime plan + secret injection contract</text>
 
-  <rect x="1032" y="300" width="280" height="64" rx="12" fill="#1e293b" opacity="0.95"/>
-  <text x="1050" y="325" class="chip">Bot Instance</text>
-  <text x="1050" y="347" class="small">bot process + business logic running in habitat</text>
+  <rect x="56" y="370" width="1288" height="236" rx="22" fill="url(#planeB)" opacity="0.30"/>
+  <text x="84" y="404" class="plane">Execution Plane</text>
 
-  <rect x="56" y="420" width="420" height="250" rx="20" fill="url(#cardD)" filter="url(#shadow)"/>
-  <rect x="56" y="420" width="420" height="250" rx="20" fill="url(#panel)"/>
-  <text x="84" y="464" class="h">Data + Host Integrations</text>
-  <text x="84" y="492" class="b">- Explicit mounts define accessible data</text>
-  <text x="84" y="517" class="b">- Host runtime/config paths outside habitat</text>
-  <text x="84" y="542" class="b">- Controlled write-back via host-side flow</text>
-  <text x="84" y="567" class="b">- Auditable logs and state on host</text>
-  <text x="84" y="600" class="small">No implicit access outside declared habitat boundaries</text>
+  <rect x="92" y="424" width="1248" height="162" rx="18" fill="#0f172a" opacity="0.95" filter="url(#shadow)"/>
+  <text x="120" y="464" class="h">Isolated Habitat (Per Bot)</text>
+  <text x="120" y="492" class="b">Runtime adapter: Apple Container / Podman / Docker</text>
+  <text x="120" y="520" class="b">Policy enforced at boundary: mounts / network / env / secrets</text>
+  <text x="120" y="548" class="b">Lifecycle: ephemeral or detached daemon</text>
 
-  <rect x="500" y="420" width="420" height="250" rx="20" fill="#0b203a" opacity="0.95" filter="url(#shadow)"/>
-  <rect x="500" y="420" width="420" height="250" rx="20" fill="url(#panel)"/>
-  <text x="528" y="464" class="h">Engine Guarantees</text>
-  <text x="528" y="492" class="b">- Security baseline: deny-by-default net/mount/env</text>
-  <text x="528" y="517" class="b">- Reproducibility: locks + digest-pinned image</text>
-  <text x="528" y="542" class="b">- Auditability: capsule diff + run event traces</text>
-  <text x="528" y="567" class="b">- Portability: one contract across runtimes</text>
-  <text x="528" y="600" class="small">Engine value beyond one-off scripts</text>
+  <rect x="756" y="450" width="540" height="112" rx="14" fill="url(#cardSlate)" opacity="0.95"/>
+  <text x="778" y="486" class="chip">Bot Instance</text>
+  <text x="778" y="512" class="small">business logic + tools + memory running inside habitat</text>
+  <text x="778" y="536" class="small">no implicit access outside declared contract</text>
 
-  <rect x="944" y="420" width="402" height="250" rx="20" fill="#10233f" opacity="0.95" filter="url(#shadow)"/>
-  <rect x="944" y="420" width="402" height="250" rx="20" fill="url(#panel)"/>
-  <text x="972" y="464" class="h">Models + External Tools</text>
-  <text x="972" y="492" class="b">- OpenAI-compatible or custom endpoints</text>
-  <text x="972" y="517" class="b">- External tools only when policy allows</text>
-  <text x="972" y="542" class="b">- Keys injected by env name (runtime only)</text>
-  <text x="972" y="567" class="b">- No secret persisted in `.claw` or capsule</text>
-  <text x="972" y="600" class="small">Default network mode remains `none` unless allowed</text>
+  <rect x="56" y="634" width="1288" height="170" rx="22" fill="url(#planeC)" opacity="0.28"/>
+  <text x="84" y="668" class="plane">Control And Evidence Plane</text>
 
-  <path d="M 316 241 C 324 241, 332 241, 340 241" class="link"/>
-  <path d="M 650 241 C 658 241, 666 241, 674 241" class="link"/>
-  <path d="M 974 241 C 982 241, 990 241, 998 241" class="link"/>
+  <rect x="86" y="686" width="402" height="104" rx="14" fill="url(#cardSlate)" filter="url(#shadow)"/>
+  <text x="108" y="720" class="h">State + Events</text>
+  <text x="108" y="746" class="small">SQLite state, run logs, inspect/debug traces</text>
 
-  <path d="M 829 332 C 829 374, 829 388, 829 420" class="linkSoft"/>
-  <path d="M 1172 364 C 1172 387, 1172 398, 1172 420" class="linkWarn"/>
-  <path d="M 495 332 C 476 370, 426 396, 350 420" class="linkSoft"/>
+  <rect x="520" y="686" width="392" height="104" rx="14" fill="url(#cardSlate)" filter="url(#shadow)"/>
+  <text x="542" y="720" class="h">Capsule + Locks</text>
+  <text x="542" y="746" class="small">reproducible artifact, digest pinning, diffability</text>
 
-  <path d="M 84 548 C 18 520, 16 212, 84 198" class="loop"/>
+  <rect x="944" y="686" width="372" height="104" rx="14" fill="url(#cardSlate)" filter="url(#shadow)"/>
+  <text x="966" y="720" class="h">Outputs + Integrations</text>
+  <text x="966" y="746" class="small">models/tools used under policy, controlled write-back</text>
+
+  <path d="M 366 256 C 382 256, 392 256, 408 256" class="link"/>
+  <path d="M 768 256 C 784 256, 794 256, 810 256" class="link"/>
+  <path d="M 1062 324 C 1062 360, 980 396, 980 424" class="link"/>
+  <path d="M 980 586 C 980 620, 980 646, 980 686" class="link"/>
+  <path d="M 122 746 C 40 720, 32 232, 86 228" class="loop"/>
 </svg>
