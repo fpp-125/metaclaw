@@ -16,6 +16,15 @@ This repo contains engine capabilities only.
 - includes: CLI (`init/validate/compile/run/ps/logs/inspect/debug`), Clawfile schemas, compiler/locks/policy, runtime adapters, state store
 - excludes: concrete business bots/workflows, reusable skill catalog content, registry backend service implementation
 
+## Ecosystem Repo Map
+
+| Repo | Primary Responsibility | URL |
+| --- | --- | --- |
+| `metaclaw` | Engine core: compiler, runtime adapters, lifecycle/state | https://github.com/fpp-125/metaclaw |
+| `metaclaw-examples` | Runnable end-to-end examples and starter templates | https://github.com/fpp-125/metaclaw-examples |
+| `metaclaw-skills` | Reusable capabilities (`SKILL.md` + `capability.contract`) | https://github.com/fpp-125/metaclaw-skills |
+| `metaclaw-registry` | Publish/distribution backend for skill/capsule metadata | https://github.com/fpp-125/metaclaw-registry |
+
 ## Why MetaClaw
 
 - Runtime-isolated execution is implemented today:
@@ -146,6 +155,36 @@ Useful flags:
 - `--read-only` for read-only vault mount.
 - `--provider=openai_compatible` for OpenAI-style endpoints.
 - `--provider=none` to scaffold without LLM wiring.
+
+## Obsidian End-to-End Example
+
+![Obsidian Workflow](docs/diagrams/obsidian-usecase.svg)
+
+Complete runnable reference lives in:
+- https://github.com/fpp-125/metaclaw-examples/tree/main/examples/obsidian-terminal-bot-advanced
+
+Quick flow:
+
+```bash
+# 1) clone examples repo and enter advanced bot
+git clone https://github.com/fpp-125/metaclaw-examples.git
+cd metaclaw-examples/examples/obsidian-terminal-bot-advanced
+
+# 2) edit mount source paths in agent.claw
+
+# 3) build image and pin digest back into agent.claw
+./build_image.sh
+
+# 4) run with runtime-only secrets
+export GEMINI_API_KEY=...
+export TAVILY_API_KEY=...
+METACLAW_BIN=/abs/path/to/metaclaw ./chat.sh
+```
+
+The loop is explicit and reproducible:
+- business logic in image layer
+- `agent.claw` declares policy/runtime/mounts only
+- secrets injected at run time, not committed into capsule/clawfile
 
 ## Security Model
 
@@ -278,23 +317,7 @@ Optional runtime override:
 METACLAW_TEST_RUNTIME=docker go test -tags=integration ./internal/manager -run TestE2ERuntime -v
 ```
 
-## Multi-Repo Layout
-
-MetaClaw ecosystem repos:
-
-- `metaclaw` (this repo): engine, compiler, runtime manager
-- `metaclaw-skills`: reusable capabilities (`SKILL.md` + `capability.contract`)
-- `metaclaw-examples`: runnable end-to-end examples/templates only
-- `metaclaw-registry`: publishing/distribution backend (metadata + policy), not business bot code
-
-Repository links:
-
-- https://github.com/fpp-125/metaclaw
-- https://github.com/fpp-125/metaclaw-skills
-- https://github.com/fpp-125/metaclaw-examples
-- https://github.com/fpp-125/metaclaw-registry
-
-Cross-repo smoke test:
+## Cross-Repo Smoke Test
 
 ```bash
 ./scripts/test-multirepo.sh
