@@ -1,0 +1,32 @@
+digraph MetaClaw {
+  rankdir=LR;
+  node [shape=box, style=rounded, fontname="Helvetica"];
+
+  user [label="User", shape=oval];
+  cli [label="MetaClaw CLI"];
+  claw [label="Clawfile"];
+  skill [label="Skill + Contract"];
+  compiler [label="Compiler"];
+  capsule [label="Capsule"];
+  resolver [label="Runtime Resolver"];
+  runtimes [label="Apple | Podman | Docker"];
+  container [label="Agent Container"];
+  state [label="SQLite + Events"];
+  ecosystem [label="Examples / Skills / Nano-QMD"];
+  security [label="Security Protocol"];
+
+  user -> cli;
+  claw -> compiler;
+  skill -> compiler;
+  cli -> compiler;
+  compiler -> capsule;
+  cli -> resolver;
+  resolver -> runtimes;
+  runtimes -> container;
+  cli -> state;
+  container -> state;
+  ecosystem -> claw;
+  ecosystem -> skill;
+  security -> compiler;
+  security -> container;
+}

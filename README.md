@@ -29,6 +29,13 @@ This MVP implements a daemonless Go CLI that:
   - API keys injected at runtime (`--llm-api-key-env` recommended).
   - Keys are not written into `.claw` or capsule artifacts.
 
+## Architecture Graph
+
+![MetaClaw Architecture](docs/diagrams/metaclaw-architecture.svg)
+
+- Editable source: `docs/diagrams/metaclaw-architecture.dot`
+- Local render (if Graphviz is installed): `dot -Tsvg docs/diagrams/metaclaw-architecture.dot -o docs/diagrams/metaclaw-architecture.svg`
+
 ## Commands
 
 Most users only need this flow to get started:
