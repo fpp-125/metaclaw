@@ -1,6 +1,6 @@
 # MetaClaw
 
-This README is intentionally comprehensive: it covers both engine documentation and bot usage guides. For a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
+For a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
 
 ## Positioning
 
