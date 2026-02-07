@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metaclaw/metaclaw/internal/capsule"
-	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
-	"github.com/metaclaw/metaclaw/internal/compiler"
-	"github.com/metaclaw/metaclaw/internal/llm"
-	"github.com/metaclaw/metaclaw/internal/logs"
-	"github.com/metaclaw/metaclaw/internal/policy"
-	"github.com/metaclaw/metaclaw/internal/runtime"
-	"github.com/metaclaw/metaclaw/internal/runtime/spec"
-	store "github.com/metaclaw/metaclaw/internal/store/sqlite"
+	"github.com/fpp-125/metaclaw/internal/capsule"
+	v1 "github.com/fpp-125/metaclaw/internal/claw/schema/v1"
+	"github.com/fpp-125/metaclaw/internal/compiler"
+	"github.com/fpp-125/metaclaw/internal/llm"
+	"github.com/fpp-125/metaclaw/internal/logs"
+	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/runtime"
+	"github.com/fpp-125/metaclaw/internal/runtime/spec"
+	store "github.com/fpp-125/metaclaw/internal/store/sqlite"
 )
 
 type Manager struct {

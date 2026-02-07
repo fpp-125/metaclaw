@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/metaclaw/metaclaw/internal/capsule"
-	"github.com/metaclaw/metaclaw/internal/claw/parse"
-	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
-	"github.com/metaclaw/metaclaw/internal/claw/validate"
-	"github.com/metaclaw/metaclaw/internal/locks"
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/capsule"
+	"github.com/fpp-125/metaclaw/internal/claw/parse"
+	v1 "github.com/fpp-125/metaclaw/internal/claw/schema/v1"
+	"github.com/fpp-125/metaclaw/internal/claw/validate"
+	"github.com/fpp-125/metaclaw/internal/locks"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 type Result struct {

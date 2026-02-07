@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/metaclaw/metaclaw/internal/capsule"
-	"github.com/metaclaw/metaclaw/internal/compiler"
-	"github.com/metaclaw/metaclaw/internal/manager"
+	"github.com/fpp-125/metaclaw/internal/capsule"
+	"github.com/fpp-125/metaclaw/internal/compiler"
+	"github.com/fpp-125/metaclaw/internal/manager"
 )
 
 func Execute(args []string) int {

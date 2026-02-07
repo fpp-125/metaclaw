@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/metaclaw/metaclaw/internal/cli"
+	"github.com/fpp-125/metaclaw/internal/cli"
 )
 
 func main() {
