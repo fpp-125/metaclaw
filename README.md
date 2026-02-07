@@ -1,5 +1,7 @@
 # MetaClaw
 
+This README is intentionally comprehensive because it serves both engine documentation and bot usage guides; if you prefer a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
+
 MetaClaw is a local-first infrastructure engine for AI agents.
 
 This MVP implements a daemonless Go CLI that:
