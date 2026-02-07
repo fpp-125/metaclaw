@@ -9,7 +9,7 @@ This MVP implements a daemonless Go CLI that:
 - Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
 - Stores lifecycle state in SQLite and logs events as JSONL.
 
-## Why MetaClaw (Current Advantages)
+## Why MetaClaw
 
 - Runtime-isolated execution is implemented today:
   - Apple Container adapter (macOS).
