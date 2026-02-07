@@ -266,3 +266,18 @@ Optional runtime override:
 ```bash
 METACLAW_TEST_RUNTIME=docker go test -tags=integration ./internal/manager -run TestE2ERuntime -v
 ```
+
+## Multi-Repo Layout
+
+MetaClaw ecosystem repos:
+
+- `metaclaw` (this repo): engine, compiler, runtime manager.
+- `metaclaw-skills`: reusable skill modules + capability contracts.
+- `metaclaw-examples`: starter templates and runnable examples.
+- `metaclaw-registry`: publish/discovery API for skill/capsule metadata (OCI refs + digests).
+
+Cross-repo smoke test:
+
+```bash
+./scripts/test-multirepo.sh
+```
