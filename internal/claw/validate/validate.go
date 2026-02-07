@@ -3,6 +3,7 @@ package validate
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -114,10 +115,34 @@ func validateNetwork(mode string) error {
 }
 
 func validateMounts(mounts []v1.MountSpec) error {
+	seenTargets := make(map[string]struct{}, len(mounts))
 	for _, m := range mounts {
-		if m.Source == "" || m.Target == "" {
+		source := strings.TrimSpace(m.Source)
+		target := strings.TrimSpace(m.Target)
+		if source == "" || target == "" {
 			return fmt.Errorf("every habitat mount requires source and target")
 		}
+		if !filepath.IsAbs(source) {
+			return fmt.Errorf("habitat mount source must be an absolute path (got %q)", m.Source)
+		}
+		cleanSource := filepath.Clean(source)
+		if cleanSource != source {
+			return fmt.Errorf("habitat mount source must be normalized (got %q; want %q)", m.Source, cleanSource)
+		}
+		if !path.IsAbs(target) {
+			return fmt.Errorf("habitat mount target must be an absolute container path (got %q)", m.Target)
+		}
+		cleanTarget := path.Clean(target)
+		if cleanTarget == "/" {
+			return fmt.Errorf("habitat mount target cannot be root /")
+		}
+		if cleanTarget != target {
+			return fmt.Errorf("habitat mount target must be normalized (got %q; want %q)", m.Target, cleanTarget)
+		}
+		if _, ok := seenTargets[target]; ok {
+			return fmt.Errorf("duplicate habitat mount target: %s", target)
+		}
+		seenTargets[target] = struct{}{}
 	}
 	return nil
 }

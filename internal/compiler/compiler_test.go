@@ -79,3 +79,52 @@ agent:
 		t.Fatalf("expected deterministic manifest even with in-tree output")
 	}
 }
+
+func TestCompileDeterministicAcrossAbsoluteAndRelativeInputPath(t *testing.T) {
+	root := t.TempDir()
+	clawPath := filepath.Join(root, "agent.claw")
+	content := `apiVersion: metaclaw/v1
+kind: Agent
+agent:
+  name: hello
+  species: nano
+  habitat:
+    network:
+      mode: none
+  command:
+    - sh
+    - -lc
+    - echo "hello"
+`
+	if err := os.WriteFile(clawPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write clawfile: %v", err)
+	}
+
+	outAbs := t.TempDir()
+	outRel := t.TempDir()
+
+	absRes, err := Compile(clawPath, outAbs)
+	if err != nil {
+		t.Fatalf("Compile absolute path failed: %v", err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir to root: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(wd)
+	})
+
+	relRes, err := Compile("agent.claw", outRel)
+	if err != nil {
+		t.Fatalf("Compile relative path failed: %v", err)
+	}
+
+	if absRes.Capsule.ID != relRes.Capsule.ID {
+		t.Fatalf("expected identical capsule id for absolute vs relative compile paths: abs=%s rel=%s", absRes.Capsule.ID, relRes.Capsule.ID)
+	}
+}

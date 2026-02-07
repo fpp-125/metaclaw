@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -105,5 +106,77 @@ func TestRejectLLMWithoutModel(t *testing.T) {
 	_, err := NormalizeAndValidate(cfg, "agent.claw")
 	if err == nil {
 		t.Fatal("expected validation error when llm model is missing")
+	}
+}
+
+func TestRejectRelativeMountSource(t *testing.T) {
+	cfg := v1.Clawfile{
+		APIVersion: "metaclaw/v1",
+		Kind:       "Agent",
+		Agent: v1.AgentSpec{
+			Name:    "a",
+			Species: v1.SpeciesNano,
+			Habitat: v1.HabitatSpec{
+				Mounts: []v1.MountSpec{
+					{Source: "./vault", Target: "/vault"},
+				},
+			},
+		},
+	}
+	_, err := NormalizeAndValidate(cfg, "agent.claw")
+	if err == nil {
+		t.Fatal("expected validation error for relative mount source")
+	}
+	if !strings.Contains(err.Error(), "source must be an absolute path") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRejectNonAbsoluteMountTarget(t *testing.T) {
+	cfg := v1.Clawfile{
+		APIVersion: "metaclaw/v1",
+		Kind:       "Agent",
+		Agent: v1.AgentSpec{
+			Name:    "a",
+			Species: v1.SpeciesNano,
+			Habitat: v1.HabitatSpec{
+				Mounts: []v1.MountSpec{
+					{Source: filepath.Clean(t.TempDir()), Target: "vault"},
+				},
+			},
+		},
+	}
+	_, err := NormalizeAndValidate(cfg, "agent.claw")
+	if err == nil {
+		t.Fatal("expected validation error for non-absolute mount target")
+	}
+	if !strings.Contains(err.Error(), "target must be an absolute container path") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRejectDuplicateMountTargets(t *testing.T) {
+	src1 := filepath.Clean(t.TempDir())
+	src2 := filepath.Clean(t.TempDir())
+	cfg := v1.Clawfile{
+		APIVersion: "metaclaw/v1",
+		Kind:       "Agent",
+		Agent: v1.AgentSpec{
+			Name:    "a",
+			Species: v1.SpeciesNano,
+			Habitat: v1.HabitatSpec{
+				Mounts: []v1.MountSpec{
+					{Source: src1, Target: "/vault"},
+					{Source: src2, Target: "/vault"},
+				},
+			},
+		},
+	}
+	_, err := NormalizeAndValidate(cfg, "agent.claw")
+	if err == nil {
+		t.Fatal("expected validation error for duplicate mount target")
+	}
+	if !strings.Contains(err.Error(), "duplicate habitat mount target") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/fpp-125/metaclaw/internal/capsule"
 	"github.com/fpp-125/metaclaw/internal/claw/parse"
@@ -52,7 +51,8 @@ func Compile(path string, outputDir string) (Result, error) {
 			"target": normalized.Agent.Runtime.Target,
 			"image":  normalized.Agent.Runtime.Image,
 		},
-		"sourceRoot": filepath.Dir(path),
+		// Keep this stable so absolute vs relative compile paths produce identical capsules.
+		"sourceRoot": ".",
 	}
 
 	cap, err := capsule.Write(outputDir, path, ir, pol, lk)

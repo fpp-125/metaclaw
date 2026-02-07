@@ -131,6 +131,19 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 		_ = m.store.UpdateRunStatus(runID, "running", containerID, "")
 		rec.Status = "running"
 		rec.ContainerID = containerID
+		refreshed, refreshErr := m.refreshRunStatus(ctx, rec)
+		if refreshErr == nil {
+			rec = refreshed
+		}
+		if rec.Status == "failed" {
+			if rec.LastError != "" {
+				return rec, fmt.Errorf("%s", rec.LastError)
+			}
+			if rec.ExitCode != nil {
+				return rec, fmt.Errorf("detached run failed with exit code %d", *rec.ExitCode)
+			}
+			return rec, fmt.Errorf("detached run failed")
+		}
 		return rec, nil
 	}
 
@@ -170,11 +183,29 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 }
 
 func (m *Manager) ListRuns(limit int) ([]store.RunRecord, error) {
-	return m.store.ListRuns(limit)
+	recs, err := m.store.ListRuns(limit)
+	if err != nil {
+		return nil, err
+	}
+	for i := range recs {
+		updated, refreshErr := m.refreshRunStatus(context.Background(), recs[i])
+		if refreshErr == nil {
+			recs[i] = updated
+		}
+	}
+	return recs, nil
 }
 
 func (m *Manager) GetRun(runID string) (store.RunRecord, error) {
-	return m.store.GetRun(runID)
+	rec, err := m.store.GetRun(runID)
+	if err != nil {
+		return store.RunRecord{}, err
+	}
+	updated, refreshErr := m.refreshRunStatus(context.Background(), rec)
+	if refreshErr != nil {
+		return rec, nil
+	}
+	return updated, nil
 }
 
 func (m *Manager) ReadEvents(runID string) ([]string, error) {
@@ -296,4 +327,140 @@ func mergeEnv(base map[string]string, overlay map[string]string) map[string]stri
 		out[k] = v
 	}
 	return out
+}
+
+func (m *Manager) refreshRunStatus(ctx context.Context, rec store.RunRecord) (store.RunRecord, error) {
+	if rec.Status != "running" || rec.ContainerID == "" {
+		return rec, nil
+	}
+	target, err := runtime.ParseTarget(rec.RuntimeTarget)
+	if err != nil {
+		return rec, err
+	}
+	adapter, ok := m.resolver.Adapter(target)
+	if !ok {
+		return rec, fmt.Errorf("runtime adapter unavailable: %s", rec.RuntimeTarget)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+	}
+	raw, err := adapter.Inspect(ctx, rec.ContainerID)
+	if err != nil {
+		return rec, err
+	}
+	containerStatus, exitCode, err := parseContainerInspectState(raw)
+	if err != nil {
+		return rec, err
+	}
+	runStatus, terminal := mapContainerStatus(containerStatus, exitCode)
+	if !terminal {
+		return rec, nil
+	}
+	lastError := ""
+	if runStatus == "failed" {
+		if exitCode != nil {
+			lastError = fmt.Sprintf("detached container exited with code %d", *exitCode)
+		} else {
+			lastError = "detached container exited"
+		}
+	}
+	if err := m.store.UpdateRunCompletion(rec.RunID, runStatus, rec.ContainerID, exitCode, lastError); err != nil {
+		return rec, err
+	}
+	rec.Status = runStatus
+	rec.ExitCode = exitCode
+	rec.LastError = lastError
+	rec.EndedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	message := "completed"
+	if runStatus == "failed" {
+		message = "failed"
+	}
+	_ = logs.AppendEvent(m.stateDir, rec.RunID, logs.Event{
+		Phase:       "runtime.exit",
+		Runtime:     rec.RuntimeTarget,
+		ContainerID: rec.ContainerID,
+		Message:     message,
+		Error:       lastError,
+	})
+	return rec, nil
+}
+
+type inspectPayload struct {
+	State      inspectState `json:"State"`
+	StateLower inspectState `json:"state"`
+}
+
+type inspectState struct {
+	Status        string `json:"Status"`
+	StatusLower   string `json:"status"`
+	ExitCode      *int   `json:"ExitCode"`
+	ExitCodeLower *int   `json:"exitCode"`
+}
+
+func parseContainerInspectState(raw string) (string, *int, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", nil, fmt.Errorf("empty inspect payload")
+	}
+	if strings.HasPrefix(trimmed, "[") {
+		var payload []inspectPayload
+		if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
+			return "", nil, err
+		}
+		if len(payload) == 0 {
+			return "", nil, fmt.Errorf("inspect payload is empty")
+		}
+		return payload[0].normalize()
+	}
+	var payload inspectPayload
+	if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
+		return "", nil, err
+	}
+	return payload.normalize()
+}
+
+func mapContainerStatus(status string, exitCode *int) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "running", "created", "restarting", "paused":
+		return "running", false
+	case "exited", "dead", "stopped":
+		if exitCode != nil && *exitCode == 0 {
+			return "succeeded", true
+		}
+		return "failed", true
+	default:
+		return "", false
+	}
+}
+
+func (p inspectPayload) normalize() (string, *int, error) {
+	status := p.State.Status
+	if status == "" {
+		status = p.State.StatusLower
+	}
+	if status == "" {
+		status = p.StateLower.Status
+	}
+	if status == "" {
+		status = p.StateLower.StatusLower
+	}
+	if status == "" {
+		return "", nil, fmt.Errorf("inspect payload missing container status")
+	}
+	exitCode := p.State.ExitCode
+	if exitCode == nil {
+		exitCode = p.State.ExitCodeLower
+	}
+	if exitCode == nil {
+		exitCode = p.StateLower.ExitCode
+	}
+	if exitCode == nil {
+		exitCode = p.StateLower.ExitCodeLower
+	}
+	return strings.ToLower(status), exitCode, nil
 }

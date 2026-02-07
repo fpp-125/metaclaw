@@ -143,6 +143,14 @@ func gitMetadata(root string) (string, string) {
 
 func fileManifest(root string, excludes []string) ([]FileHash, error) {
 	var out []FileHash
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolve source root: %w", err)
+	}
+	rootEval, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return nil, fmt.Errorf("resolve source root symlinks: %w", err)
+	}
 	excludeSet := make(map[string]struct{}, len(excludes))
 	for _, e := range excludes {
 		if e == "" || e == "." {
@@ -150,7 +158,7 @@ func fileManifest(root string, excludes []string) ([]FileHash, error) {
 		}
 		excludeSet[filepath.ToSlash(filepath.Clean(e))] = struct{}{}
 	}
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -172,6 +180,14 @@ func fileManifest(root string, excludes []string) ([]FileHash, error) {
 		if shouldExcludeFile(relSlash, excludeSet) {
 			return nil
 		}
+		if d.Type()&os.ModeSymlink != 0 {
+			h, err := hashSymlink(rootEval, path)
+			if err != nil {
+				return err
+			}
+			out = append(out, FileHash{Path: relSlash, SHA256: h})
+			return nil
+		}
 		h, err := hashFile(path)
 		if err != nil {
 			return err
@@ -184,6 +200,54 @@ func fileManifest(root string, excludes []string) ([]FileHash, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
+}
+
+func hashSymlink(root string, linkPath string) (string, error) {
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		return "", fmt.Errorf("read symlink %s: %w", linkPath, err)
+	}
+	resolvedTarget, err := resolveSymlinkTarget(linkPath, target)
+	if err != nil {
+		return "", err
+	}
+	inside, err := isWithinRoot(root, resolvedTarget)
+	if err != nil {
+		return "", err
+	}
+	if !inside {
+		return "", fmt.Errorf("symlink %s points outside source root", linkPath)
+	}
+	sum := sha256.Sum256([]byte("symlink:" + filepath.ToSlash(target)))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func resolveSymlinkTarget(linkPath string, target string) (string, error) {
+	resolved := target
+	if !filepath.IsAbs(resolved) {
+		resolved = filepath.Join(filepath.Dir(linkPath), resolved)
+	}
+	absResolved, err := filepath.Abs(resolved)
+	if err != nil {
+		return "", fmt.Errorf("resolve symlink absolute path %s: %w", linkPath, err)
+	}
+	evalResolved, err := filepath.EvalSymlinks(absResolved)
+	if err != nil {
+		return "", fmt.Errorf("resolve symlink target %s: %w", linkPath, err)
+	}
+	return evalResolved, nil
+}
+
+func isWithinRoot(root string, target string) (bool, error) {
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return false, fmt.Errorf("compare path to source root: %w", err)
+	}
+	rel = filepath.Clean(rel)
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false, nil
+	}
+	return true, nil
 }
 
 func hashPath(path string) (string, error) {

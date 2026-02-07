@@ -130,6 +130,51 @@ func TestE2ERuntimeDaemonLifecycle(t *testing.T) {
 	}
 }
 
+func TestE2EDaemonStatusReconcilesAfterContainerExit(t *testing.T) {
+	runtimeTarget := requireHealthyRuntime(t)
+	ensureImageAvailable(t, runtimeTarget, integrationImage)
+
+	stateDir := t.TempDir()
+	clawPath := writeClawfile(t, stateDir, clawSpec{
+		Name:      "e2e-daemon-exit",
+		Lifecycle: "daemon",
+		Runtime:   runtimeTarget,
+		Image:     integrationImage,
+		Command:   "sleep 1",
+	})
+
+	m, err := manager.New(stateDir)
+	if err != nil {
+		t.Fatalf("manager.New() error = %v", err)
+	}
+	defer m.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	rec, err := m.Run(ctx, manager.RunOptions{InputPath: clawPath})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if rec.ContainerID == "" {
+		t.Fatal("expected non-empty container ID")
+	}
+	defer cleanupContainer(t, runtimeTarget, rec.ContainerID)
+
+	time.Sleep(2 * time.Second)
+
+	saved, err := m.GetRun(rec.RunID)
+	if err != nil {
+		t.Fatalf("GetRun() error = %v", err)
+	}
+	if saved.Status != "succeeded" {
+		t.Fatalf("expected status to reconcile to succeeded after daemon exit, got %q", saved.Status)
+	}
+	if saved.ExitCode == nil || *saved.ExitCode != 0 {
+		t.Fatalf("expected reconciled exit code 0, got %+v", saved.ExitCode)
+	}
+}
+
 func TestE2ERuntimeDebugPauseOnFailure(t *testing.T) {
 	runtimeTarget := requireHealthyRuntime(t)
 	ensureImageAvailable(t, runtimeTarget, integrationImage)
