@@ -31,6 +31,9 @@
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1"/>
     </marker>
+    <marker id="arrowCycle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/>
+    </marker>
     <style>
       .title { font: 700 40px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
       .subtitle { font: 500 19px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
@@ -40,6 +43,7 @@
       .link { stroke: #cbd5e1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
       .linkSoft { stroke: #93c5fd; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
       .linkWarn { stroke: #fde68a; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .loop { stroke: #34d399; stroke-width: 2.4; fill: none; marker-end: url(#arrowCycle); opacity: 0.92; }
     </style>
   </defs>
 
@@ -113,5 +117,6 @@
 
   <path d="M 915 320 C 915 350, 915 360, 915 392" class="linkSoft"/>
   <path d="M 1188 320 C 1188 350, 1188 360, 1188 392" class="linkWarn"/>
-  <path d="M 554 320 C 520 350, 390 360, 265 392" class="linkSoft"/>
+  <path d="M 554 320 C 525 350, 455 362, 350 392" class="linkSoft"/>
+  <path d="M 74 520 C 22 500, 18 210, 76 192" class="loop"/>
 </svg>
