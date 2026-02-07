@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
+	"github.com/metaclaw/metaclaw/internal/llm"
 )
 
 type Policy struct {
@@ -54,7 +55,14 @@ func Compile(cfg v1.Clawfile) (Policy, error) {
 		return p.Mounts[i].Source < p.Mounts[j].Source
 	})
 
+	envSet := make(map[string]struct{})
 	for k := range cfg.Agent.Habitat.Env {
+		envSet[k] = struct{}{}
+	}
+	for _, k := range llm.AllowedEnvKeys(cfg.Agent.LLM) {
+		envSet[k] = struct{}{}
+	}
+	for k := range envSet {
 		p.EnvAllowlist = append(p.EnvAllowlist, k)
 	}
 	sort.Strings(p.EnvAllowlist)

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/metaclaw/metaclaw/internal/capability"
 	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
 )
 
@@ -77,7 +78,7 @@ func buildDepsLock(cfg v1.Clawfile, base string) (DepsLock, error) {
 			if !filepath.IsAbs(p) {
 				p = filepath.Join(base, p)
 			}
-			h, err := hashPath(p)
+			h, err := hashSkillPath(p)
 			if err != nil {
 				return DepsLock{}, fmt.Errorf("hash skill path %s: %w", s.Path, err)
 			}
@@ -202,6 +203,37 @@ func hashPath(path string) (string, error) {
 		_, _ = io.WriteString(h, e.Path)
 		_, _ = io.WriteString(h, e.SHA256)
 	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func hashSkillPath(path string) (string, error) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if st.IsDir() {
+		return hashPath(path)
+	}
+	fileHash, err := hashFile(path)
+	if err != nil {
+		return "", err
+	}
+	contractPath, ok, err := capability.DiscoverContractPath(path)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return fileHash, nil
+	}
+	contractHash, err := hashFile(contractPath)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New()
+	_, _ = io.WriteString(h, filepath.Base(path))
+	_, _ = io.WriteString(h, fileHash)
+	_, _ = io.WriteString(h, filepath.Base(contractPath))
+	_, _ = io.WriteString(h, contractHash)
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 

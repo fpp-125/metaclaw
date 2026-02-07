@@ -7,6 +7,7 @@ type Species string
 type LifecycleMode string
 
 type RuntimeTarget string
+type LLMProvider string
 
 const (
 	SpeciesNano  Species = "nano"
@@ -26,6 +27,11 @@ const (
 	RuntimeDocker RuntimeTarget = "docker"
 )
 
+const (
+	LLMProviderOpenAICompatible LLMProvider = "openai_compatible"
+	LLMProviderGeminiOpenAI     LLMProvider = "gemini_openai"
+)
+
 type Clawfile struct {
 	APIVersion string    `yaml:"apiVersion" json:"apiVersion"`
 	Kind       string    `yaml:"kind" json:"kind"`
@@ -37,6 +43,7 @@ type AgentSpec struct {
 	Species   Species       `yaml:"species" json:"species"`
 	Lifecycle LifecycleMode `yaml:"lifecycle,omitempty" json:"lifecycle,omitempty"`
 	Habitat   HabitatSpec   `yaml:"habitat,omitempty" json:"habitat,omitempty"`
+	LLM       LLMSpec       `yaml:"llm,omitempty" json:"llm,omitempty"`
 	Soul      SoulSpec      `yaml:"soul,omitempty" json:"soul,omitempty"`
 	Skills    []SkillRef    `yaml:"skills,omitempty" json:"skills,omitempty"`
 	Runtime   RuntimeSpec   `yaml:"runtime,omitempty" json:"runtime,omitempty"`
@@ -77,6 +84,13 @@ type RuntimeSpec struct {
 	Target    RuntimeTarget `yaml:"target,omitempty" json:"target,omitempty"`
 	Image     string        `yaml:"image,omitempty" json:"image,omitempty"`
 	Resources ResourceSpec  `yaml:"resources,omitempty" json:"resources,omitempty"`
+}
+
+type LLMSpec struct {
+	Provider  LLMProvider `yaml:"provider,omitempty" json:"provider,omitempty"`
+	Model     string      `yaml:"model,omitempty" json:"model,omitempty"`
+	BaseURL   string      `yaml:"baseURL,omitempty" json:"baseURL,omitempty"`
+	APIKeyEnv string      `yaml:"apiKeyEnv,omitempty" json:"apiKeyEnv,omitempty"`
 }
 
 type ResourceSpec struct {
@@ -125,6 +139,15 @@ func (r RuntimeTarget) Valid() bool {
 	}
 }
 
+func (p LLMProvider) Valid() bool {
+	switch p {
+	case "", LLMProviderOpenAICompatible, LLMProviderGeminiOpenAI:
+		return true
+	default:
+		return false
+	}
+}
+
 func (c Clawfile) ValidateBasics() error {
 	if c.APIVersion != "metaclaw/v1" {
 		return fmt.Errorf("apiVersion must be metaclaw/v1")
@@ -143,6 +166,9 @@ func (c Clawfile) ValidateBasics() error {
 	}
 	if !c.Agent.Runtime.Target.Valid() {
 		return fmt.Errorf("agent.runtime.target must be one of podman,apple_container,docker")
+	}
+	if !c.Agent.LLM.Provider.Valid() {
+		return fmt.Errorf("agent.llm.provider must be one of openai_compatible,gemini_openai")
 	}
 	return nil
 }

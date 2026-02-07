@@ -39,6 +39,10 @@ func Execute(args []string) int {
 		return runInspect(ctx, args[1:])
 	case "debug":
 		return runDebug(ctx, args[1:])
+	case "capsule":
+		return runCapsule(args[1:])
+	case "wizard":
+		return runWizard(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -68,6 +72,14 @@ agent:
       mode: none
     mounts: []
     env: {}
+  # Optional LLM contract (secret injected at run time)
+  # llm:
+  #   provider: gemini_openai
+  #   model: gemini-2.5-pro
+  #   # defaults to Google OpenAI-compatible endpoint for gemini_openai
+  #   # baseURL: https://generativelanguage.googleapis.com/v1beta/openai/
+  #   # defaults to GEMINI_API_KEY for gemini_openai
+  #   # apiKeyEnv: GEMINI_API_KEY
   runtime:
     # Optional; resolved by species if omitted
     # image: alpine:3.20@sha256:a4f4213abb84c497377b8544c81b3564f313746700372ec4fe84653e4fb03805
@@ -128,20 +140,29 @@ func runRun(ctx context.Context, args []string) int {
 		fmt.Fprintf(os.Stderr, "run blocked: %v\n", err)
 		return 1
 	}
-	args = reorderFlags(args, map[string]bool{"--runtime": true, "--state-dir": true})
+	args = reorderFlags(args, map[string]bool{
+		"--runtime":         true,
+		"--state-dir":       true,
+		"--llm-api-key":     true,
+		"--llm-api-key-env": true,
+	})
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	var detach bool
 	var runtimeOverride string
 	var stateDir string
+	var llmAPIKey string
+	var llmAPIKeyEnv string
 	fs.BoolVar(&detach, "detach", false, "run in background")
 	fs.StringVar(&runtimeOverride, "runtime", "", "runtime override (podman|apple_container|docker)")
 	fs.StringVar(&stateDir, "state-dir", ".metaclaw", "state directory")
+	fs.StringVar(&llmAPIKey, "llm-api-key", "", "LLM API key (prefer --llm-api-key-env for better secret hygiene)")
+	fs.StringVar(&llmAPIKeyEnv, "llm-api-key-env", "", "host env variable name to read LLM API key from")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	remaining := fs.Args()
 	if len(remaining) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: metaclaw run <file.claw|capsule_dir> [--detach] [--runtime=..] [--state-dir=.metaclaw]")
+		fmt.Fprintln(os.Stderr, "usage: metaclaw run <file.claw|capsule_dir> [--detach] [--runtime=..] [--state-dir=.metaclaw] [--llm-api-key=..|--llm-api-key-env=..]")
 		return 1
 	}
 	m, err := manager.New(stateDir)
@@ -151,7 +172,13 @@ func runRun(ctx context.Context, args []string) int {
 	}
 	defer m.Close()
 
-	r, err := m.Run(ctx, manager.RunOptions{InputPath: remaining[0], Detach: detach, RuntimeOverride: runtimeOverride})
+	r, err := m.Run(ctx, manager.RunOptions{
+		InputPath:       remaining[0],
+		Detach:          detach,
+		RuntimeOverride: runtimeOverride,
+		LLMAPIKey:       llmAPIKey,
+		LLMAPIKeyEnv:    llmAPIKeyEnv,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
 		fmt.Printf("run_id: %s\n", r.RunID)
@@ -379,13 +406,16 @@ func printUsage() {
 
 commands:
   init
+  wizard [--interactive] [--project-dir=./my-bot] [--out=obsidian-bot.claw] [--vault=./vault] [--provider=gemini_openai]
   validate <file.claw>
   compile <file.claw> [-o dir]
-  run <file.claw|capsule_dir> [--detach] [--runtime=podman|apple_container|docker]
+  run <file.claw|capsule_dir> [--detach] [--runtime=podman|apple_container|docker] [--llm-api-key=..|--llm-api-key-env=..]
   ps [--json]
   logs <run-id> [--follow]
   inspect <run-id|capsule-dir> [--json]
   debug shell <run-id>
+  capsule list [--state-dir=.metaclaw] [--agent=...] [--since=...] [--until=...]
+  capsule diff <id-or-path-1> <id-or-path-2> [--state-dir=.metaclaw] [--json]
 `)
 }
 

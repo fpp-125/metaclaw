@@ -6,11 +6,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 
+	"github.com/metaclaw/metaclaw/internal/capability"
 	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
 )
 
 var digestRef = regexp.MustCompile(`.+@sha256:[a-fA-F0-9]{64}$`)
+var envNameRef = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func NormalizeAndValidate(cfg v1.Clawfile, clawfilePath string) (v1.Clawfile, error) {
 	if err := cfg.ValidateBasics(); err != nil {
@@ -40,6 +43,9 @@ func NormalizeAndValidate(cfg v1.Clawfile, clawfilePath string) (v1.Clawfile, er
 	if len(cfg.Agent.Command) == 0 {
 		cfg.Agent.Command = []string{"sh", "-lc", "echo MetaClaw agent started"}
 	}
+	if err := normalizeLLM(&cfg.Agent.LLM); err != nil {
+		return v1.Clawfile{}, err
+	}
 
 	if !digestRef.MatchString(cfg.Agent.Runtime.Image) {
 		return v1.Clawfile{}, fmt.Errorf("agent.runtime.image must be digest-pinned (example: image@sha256:...)")
@@ -51,12 +57,51 @@ func NormalizeAndValidate(cfg v1.Clawfile, clawfilePath string) (v1.Clawfile, er
 	if err := validateMounts(cfg.Agent.Habitat.Mounts); err != nil {
 		return v1.Clawfile{}, err
 	}
-	if err := validateSkills(cfg.Agent.Skills, filepath.Dir(clawfilePath)); err != nil {
+	if err := validateSkills(cfg, filepath.Dir(clawfilePath)); err != nil {
 		return v1.Clawfile{}, err
 	}
 
 	cfg.Agent.Habitat.Env = sortedMap(cfg.Agent.Habitat.Env)
 	return cfg, nil
+}
+
+func normalizeLLM(spec *v1.LLMSpec) error {
+	if spec == nil {
+		return nil
+	}
+	hasProvider := spec.Provider != ""
+	hasOther := strings.TrimSpace(spec.Model) != "" || strings.TrimSpace(spec.BaseURL) != "" || strings.TrimSpace(spec.APIKeyEnv) != ""
+	if !hasProvider {
+		if hasOther {
+			return fmt.Errorf("agent.llm.provider is required when llm fields are set")
+		}
+		return nil
+	}
+
+	spec.Model = strings.TrimSpace(spec.Model)
+	spec.BaseURL = strings.TrimSpace(spec.BaseURL)
+	spec.APIKeyEnv = strings.TrimSpace(spec.APIKeyEnv)
+
+	if spec.Model == "" {
+		return fmt.Errorf("agent.llm.model is required when agent.llm.provider is set")
+	}
+	switch spec.Provider {
+	case v1.LLMProviderGeminiOpenAI:
+		if spec.BaseURL == "" {
+			spec.BaseURL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+		}
+		if spec.APIKeyEnv == "" {
+			spec.APIKeyEnv = "GEMINI_API_KEY"
+		}
+	case v1.LLMProviderOpenAICompatible:
+		if spec.APIKeyEnv == "" {
+			spec.APIKeyEnv = "OPENAI_API_KEY"
+		}
+	}
+	if !envNameRef.MatchString(spec.APIKeyEnv) {
+		return fmt.Errorf("agent.llm.apiKeyEnv must be a valid environment variable name")
+	}
+	return nil
 }
 
 func validateNetwork(mode string) error {
@@ -77,8 +122,8 @@ func validateMounts(mounts []v1.MountSpec) error {
 	return nil
 }
 
-func validateSkills(skills []v1.SkillRef, baseDir string) error {
-	for _, s := range skills {
+func validateSkills(cfg v1.Clawfile, baseDir string) error {
+	for _, s := range cfg.Agent.Skills {
 		hasPath := s.Path != ""
 		hasID := s.ID != ""
 		if hasPath == hasID {
@@ -92,6 +137,23 @@ func validateSkills(skills []v1.SkillRef, baseDir string) error {
 			if _, err := os.Stat(resolved); err != nil {
 				return fmt.Errorf("skill path not found: %s", s.Path)
 			}
+			contract, contractPath, err := capability.LoadFromSkillPath(resolved)
+			if err != nil {
+				return fmt.Errorf("skill %s: %w", s.Path, err)
+			}
+			if strings.TrimSpace(s.Version) != "" && strings.TrimSpace(s.Version) != strings.TrimSpace(contract.Metadata.Version) {
+				return fmt.Errorf("skill %s: version mismatch between clawfile (%s) and contract (%s)", s.Path, s.Version, contract.Metadata.Version)
+			}
+			if err := capability.ValidateAgainstAgent(contract, cfg.Agent); err != nil {
+				return fmt.Errorf("skill %s contract (%s): %w", s.Path, filepath.Base(contractPath), err)
+			}
+			continue
+		}
+		if strings.TrimSpace(s.Version) == "" {
+			return fmt.Errorf("skill id %s requires version for reproducible resolution", s.ID)
+		}
+		if strings.TrimSpace(s.Digest) == "" {
+			return fmt.Errorf("skill id %s requires digest for reproducible resolution", s.ID)
 		}
 	}
 	return nil

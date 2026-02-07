@@ -12,6 +12,7 @@ import (
 	"github.com/metaclaw/metaclaw/internal/capsule"
 	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
 	"github.com/metaclaw/metaclaw/internal/compiler"
+	"github.com/metaclaw/metaclaw/internal/llm"
 	"github.com/metaclaw/metaclaw/internal/logs"
 	"github.com/metaclaw/metaclaw/internal/policy"
 	"github.com/metaclaw/metaclaw/internal/runtime"
@@ -29,6 +30,8 @@ type RunOptions struct {
 	InputPath       string
 	Detach          bool
 	RuntimeOverride string
+	LLMAPIKey       string
+	LLMAPIKeyEnv    string
 }
 
 type RunOutcome struct {
@@ -67,6 +70,14 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 	if err != nil {
 		return store.RunRecord{}, err
 	}
+	resolvedLLM, err := llm.Resolve(cfg.Agent.LLM, llm.RuntimeOptions{
+		APIKey:    opts.LLMAPIKey,
+		APIKeyEnv: opts.LLMAPIKeyEnv,
+	})
+	if err != nil {
+		return store.RunRecord{}, err
+	}
+	env := mergeEnv(cfg.Agent.Habitat.Env, resolvedLLM.Env)
 
 	runID := makeRunID()
 	rec := store.RunRecord{
@@ -90,7 +101,7 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 		Command:       cfg.Agent.Command,
 		Detach:        opts.Detach || cfg.Agent.Lifecycle == v1.LifecycleDaemon,
 		Policy:        pol,
-		Env:           cfg.Agent.Habitat.Env,
+		Env:           env,
 		Workdir:       cfg.Agent.Habitat.Workdir,
 		User:          cfg.Agent.Habitat.User,
 	})
@@ -273,3 +284,14 @@ func writeRunOutput(stateDir, runID, fileName, content string) error {
 }
 
 func intPtr(v int) *int { return &v }
+
+func mergeEnv(base map[string]string, overlay map[string]string) map[string]string {
+	out := make(map[string]string, len(base)+len(overlay))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range overlay {
+		out[k] = v
+	}
+	return out
+}

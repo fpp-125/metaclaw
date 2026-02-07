@@ -16,6 +16,16 @@
         "name": {"type": "string", "minLength": 1},
         "species": {"enum": ["nano", "micro", "mega"]},
         "lifecycle": {"enum": ["ephemeral", "daemon", "debug"]},
+        "llm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {"enum": ["openai_compatible", "gemini_openai"]},
+            "model": {"type": "string", "minLength": 1},
+            "baseURL": {"type": "string", "minLength": 1},
+            "apiKeyEnv": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}
+          }
+        },
         "runtime": {
           "type": "object",
           "additionalProperties": false,
