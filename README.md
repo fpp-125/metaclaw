@@ -31,21 +31,57 @@ This MVP implements a daemonless Go CLI that:
 
 ## Commands
 
+Most users only need this flow to get started:
+
 ```bash
+# Create an agent template
 metaclaw init
+
+# Or use the step-by-step wizard (best for first run)
 metaclaw wizard
-metaclaw wizard --project-dir=./my-obsidian-bot --provider=gemini_openai
+
+# Validate config before running
 metaclaw validate agent.claw
-metaclaw compile agent.claw -o out/
-metaclaw run agent.claw --runtime=podman
-metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY
+
+# Run agent once (foreground)
+metaclaw run agent.claw
+
+# Run agent in background daemon mode
 metaclaw run agent.claw --detach
+
+# Inject LLM key at runtime (recommended secret hygiene)
+metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY
+```
+
+Runtime control and debugging:
+
+```bash
+# Show recent runs
 metaclaw ps
+
+# Show logs for one run
 metaclaw logs <run-id>
+
+# Inspect runtime/container details for one run
 metaclaw inspect <run-id>
-metaclaw inspect <capsule-dir>
+
+# Open shell in preserved debug container
 metaclaw debug shell <run-id>
+```
+
+Capsule build and audit:
+
+```bash
+# Compile clawfile into immutable capsule
+metaclaw compile agent.claw -o out/
+
+# Inspect a capsule directory
+metaclaw inspect <capsule-dir>
+
+# List local capsules with filters
 metaclaw capsule list --state-dir=.metaclaw --agent=hello --since=2026-02-01
+
+# Diff two capsules (IR/policy/locks)
 metaclaw capsule diff <id1> <id2> --state-dir=.metaclaw
 ```
 
