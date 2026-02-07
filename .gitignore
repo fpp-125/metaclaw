@@ -3,5 +3,5 @@
 *.log
 *.out
 /tmp/
-metaclaw
+/metaclaw
 .DS_Store

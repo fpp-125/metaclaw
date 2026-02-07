@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/metaclaw/metaclaw/internal/locks"
 	"github.com/metaclaw/metaclaw/internal/policy"
@@ -145,6 +146,9 @@ func Load(path string) (Manifest, error) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		return Manifest{}, err
 	}
+	if err := verifyManifest(path, m); err != nil {
+		return Manifest{}, err
+	}
 	return m, nil
 }
 
@@ -184,4 +188,63 @@ func makeCapsuleID(digests map[string]string) string {
 		_, _ = h.Write([]byte(digests[k]))
 	}
 	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+func verifyManifest(basePath string, m Manifest) error {
+	if m.CapsuleID == "" {
+		return fmt.Errorf("capsule manifest missing capsuleId")
+	}
+	required := map[string]string{
+		"ir":     "ir.json",
+		"policy": "policy.json",
+		"deps":   m.Locks.Dependency,
+		"image":  m.Locks.Image,
+		"source": m.Locks.Source,
+	}
+	for key, relPath := range required {
+		expected, ok := m.Digests[key]
+		if !ok || expected == "" {
+			return fmt.Errorf("capsule manifest missing digest for %s", key)
+		}
+		absPath, err := resolveCapsulePath(basePath, relPath)
+		if err != nil {
+			return fmt.Errorf("capsule manifest path for %s is invalid: %w", key, err)
+		}
+		b, err := os.ReadFile(absPath)
+		if err != nil {
+			return fmt.Errorf("read capsule %s: %w", relPath, err)
+		}
+		got := digest(b)
+		if got != expected {
+			return fmt.Errorf("capsule digest mismatch for %s: expected %s, got %s", key, expected, got)
+		}
+	}
+
+	return nil
+}
+
+func resolveCapsulePath(basePath, relPath string) (string, error) {
+	if relPath == "" {
+		return "", fmt.Errorf("empty path")
+	}
+	if filepath.IsAbs(relPath) {
+		return "", fmt.Errorf("absolute paths are not allowed")
+	}
+	clean := filepath.Clean(relPath)
+	if clean == "." || strings.HasPrefix(clean, "..") {
+		return "", fmt.Errorf("path escapes capsule root: %s", relPath)
+	}
+	absBase, err := filepath.Abs(basePath)
+	if err != nil {
+		return "", err
+	}
+	abs := filepath.Join(absBase, clean)
+	rel, err := filepath.Rel(absBase, abs)
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf("path escapes capsule root: %s", relPath)
+	}
+	return abs, nil
 }

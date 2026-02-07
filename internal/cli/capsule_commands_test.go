@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -84,6 +86,7 @@ func TestResolveCapsuleRefAndDiff(t *testing.T) {
 		"mounts":  []any{},
 	}
 	writeJSONFile(t, policyPath, policy)
+	refreshCapsuleManifestDigests(t, rightPath)
 
 	left, err := resolveCapsuleRef(stateDir, "aaaa1111")
 	if err != nil {
@@ -119,7 +122,13 @@ func writeTestCapsule(t *testing.T, capPath string, id string, agentName string)
 		"version":        "metaclaw.capsule/v1",
 		"capsuleId":      id,
 		"sourceClawfile": "agent.claw",
-		"digests":        map[string]any{"ir": "sha256:test"},
+		"digests": map[string]any{
+			"ir":     "",
+			"policy": "",
+			"deps":   "",
+			"image":  "",
+			"source": "",
+		},
 		"runtimeCompatibility": map[string]any{
 			"targets":   []any{"docker"},
 			"semantics": []any{"detach"},
@@ -152,6 +161,7 @@ func writeTestCapsule(t *testing.T, capPath string, id string, agentName string)
 	writeJSONFile(t, filepath.Join(capPath, "locks", "deps.lock.json"), deps)
 	writeJSONFile(t, filepath.Join(capPath, "locks", "image.lock.json"), image)
 	writeJSONFile(t, filepath.Join(capPath, "locks", "source.lock.json"), source)
+	refreshCapsuleManifestDigests(t, capPath)
 }
 
 func writeJSONFile(t *testing.T, path string, data any) {
@@ -163,6 +173,38 @@ func writeJSONFile(t *testing.T, path string, data any) {
 	if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func refreshCapsuleManifestDigests(t *testing.T, capPath string) {
+	t.Helper()
+	manifestPath := filepath.Join(capPath, "manifest.json")
+	b, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(b, &manifest); err != nil {
+		t.Fatalf("unmarshal manifest: %v", err)
+	}
+	digests := map[string]any{
+		"ir":     fileDigest(t, filepath.Join(capPath, "ir.json")),
+		"policy": fileDigest(t, filepath.Join(capPath, "policy.json")),
+		"deps":   fileDigest(t, filepath.Join(capPath, "locks", "deps.lock.json")),
+		"image":  fileDigest(t, filepath.Join(capPath, "locks", "image.lock.json")),
+		"source": fileDigest(t, filepath.Join(capPath, "locks", "source.lock.json")),
+	}
+	manifest["digests"] = digests
+	writeJSONFile(t, manifestPath, manifest)
+}
+
+func fileDigest(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	sum := sha256.Sum256(b)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func TestDiffJSONSectionArrayAndFieldChanges(t *testing.T) {

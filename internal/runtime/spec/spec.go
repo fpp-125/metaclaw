@@ -23,6 +23,8 @@ type RunOptions struct {
 	Env           map[string]string
 	Workdir       string
 	User          string
+	CPU           string
+	Memory        string
 }
 
 type RunResult struct {

@@ -105,6 +105,39 @@ func TestValidateAgainstAgentRejectsMissingRequiredMount(t *testing.T) {
 	}
 }
 
+func TestValidateAgainstAgentRejectsRuntimeAutoWhenContractPinsTargets(t *testing.T) {
+	c := Contract{
+		APIVersion: ContractAPIVersion,
+		Kind:       ContractKind,
+		Metadata:   Metadata{Name: "x", Version: "v1"},
+		Permissions: Permissions{
+			Network: "none",
+		},
+		Compatibility: Compatibility{
+			RuntimeTargets: []string{"docker", "podman"},
+		},
+	}
+	if err := Validate(c); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	agent := v1.AgentSpec{
+		Name:    "a",
+		Species: v1.SpeciesMicro,
+		Habitat: v1.HabitatSpec{
+			Network: v1.NetworkSpec{Mode: "none"},
+		},
+		// runtime.target intentionally omitted (auto mode)
+	}
+	err := ValidateAgainstAgent(c, agent)
+	if err == nil {
+		t.Fatal("expected runtime.target requirement error")
+	}
+	if !strings.Contains(err.Error(), "set agent.runtime.target explicitly") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestLoadFromSkillPathRequiresContract(t *testing.T) {
 	root := t.TempDir()
 	skillDir := filepath.Join(root, "skill")

@@ -238,7 +238,10 @@ func ValidateAgainstAgent(c Contract, agent v1.AgentSpec) error {
 		}
 	}
 
-	if len(c.Compatibility.RuntimeTargets) > 0 && agent.Runtime.Target != "" {
+	if len(c.Compatibility.RuntimeTargets) > 0 {
+		if agent.Runtime.Target == "" {
+			return fmt.Errorf("skill declares compatibility.runtimeTargets=%s; set agent.runtime.target explicitly", strings.Join(c.Compatibility.RuntimeTargets, ","))
+		}
 		allowed := make(map[string]struct{}, len(c.Compatibility.RuntimeTargets))
 		for _, rt := range c.Compatibility.RuntimeTargets {
 			allowed[strings.TrimSpace(rt)] = struct{}{}

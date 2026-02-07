@@ -132,6 +132,7 @@ Useful flags:
 - Runtime backend can be overridden with `--runtime`.
 - CLI overrides that attempt to change security boundaries are blocked.
 - LLM keys are injected at run time (`--llm-api-key-env` recommended), not stored in capsule artifacts.
+- Runtime adapters pass env by key reference (`-e KEY`) instead of inlining `KEY=value` in process args.
 
 ## LLM Provider Contract
 
@@ -184,6 +185,8 @@ permissions:
 compatibility:
   runtimeTargets: [docker, podman]
 ```
+
+If `compatibility.runtimeTargets` is declared, set `agent.runtime.target` explicitly (disable auto runtime selection) to avoid runtime mismatch.
 
 ## Development
 

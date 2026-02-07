@@ -104,6 +104,8 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 		Env:           env,
 		Workdir:       cfg.Agent.Habitat.Workdir,
 		User:          cfg.Agent.Habitat.User,
+		CPU:           cfg.Agent.Runtime.Resources.CPU,
+		Memory:        cfg.Agent.Runtime.Resources.Memory,
 	})
 
 	containerID := runRes.ContainerID
