@@ -1,29 +1,29 @@
-<svg width="1400" height="620" viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw Obsidian workflow diagram">
+<svg width="1400" height="720" viewBox="0 0 1400 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MetaClaw Obsidian bot workflow">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="50%" stop-color="#10213b"/>
-      <stop offset="100%" stop-color="#152f4d"/>
+      <stop offset="55%" stop-color="#10243f"/>
+      <stop offset="100%" stop-color="#17365c"/>
     </linearGradient>
-    <linearGradient id="accentA" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1e3a8a"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
+    <linearGradient id="cardA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
-    <linearGradient id="accentB" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="cardB" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0f766e"/>
-      <stop offset="100%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#0d9488"/>
     </linearGradient>
-    <linearGradient id="accentC" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="cardC" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#a16207"/>
-      <stop offset="100%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
-    <linearGradient id="accentD" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="cardD" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#6d28d9"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
     <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.35"/>
@@ -32,96 +32,88 @@
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1"/>
     </marker>
     <style>
-      .title { font: 700 42px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
-      .subtitle { font: 500 20px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
-      .h { font: 700 21px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .title { font: 700 40px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .subtitle { font: 500 19px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .h { font: 700 22px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
       .b { font: 500 16px 'Avenir Next', 'Segoe UI', sans-serif; fill: #e2e8f0; }
       .small { font: 500 14px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
-      .line { stroke: #cbd5e1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .line2 { stroke: #93c5fd; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .line3 { stroke: #a7f3d0; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .line4 { stroke: #fde68a; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .chip { font: 600 13px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .link { stroke: #cbd5e1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .linkSoft { stroke: #93c5fd; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .linkWarn { stroke: #fde68a; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 
-  <rect width="1400" height="620" fill="url(#bg)"/>
-  <circle cx="1200" cy="130" r="180" fill="#38bdf8" opacity="0.10"/>
-  <circle cx="220" cy="560" r="220" fill="#22c55e" opacity="0.09"/>
+  <rect width="1400" height="720" fill="url(#bg)"/>
+  <circle cx="1180" cy="130" r="180" fill="#38bdf8" opacity="0.10"/>
+  <circle cx="250" cy="650" r="220" fill="#22c55e" opacity="0.08"/>
 
-  <text x="62" y="72" class="title">MetaClaw Obsidian Bot Workflow</text>
-  <text x="62" y="106" class="subtitle">Engine repo + example repo + runtime + external providers in one reproducible loop</text>
+  <text x="56" y="70" class="title">MetaClaw Obsidian Bot Workflow</text>
+  <text x="56" y="102" class="subtitle">Reproducible loop: example project -> engine compile/run -> isolated container -> controlled save back to vault</text>
 
-  <rect x="56" y="148" width="326" height="178" rx="20" fill="url(#accentD)" filter="url(#shadow)"/>
-  <rect x="56" y="148" width="326" height="178" rx="20" fill="url(#panel)"/>
-  <text x="84" y="194" class="h">Terminal User</text>
-  <text x="84" y="222" class="b">- Runs `metaclaw` commands</text>
-  <text x="84" y="248" class="b">- Talks via `chat_tui.py`</text>
-  <text x="84" y="274" class="b">- Chooses `/net out` only when needed</text>
-  <text x="84" y="300" class="b">- Saves notes with controlled `/save` flow</text>
+  <rect x="56" y="150" width="286" height="170" rx="18" fill="url(#cardD)" filter="url(#shadow)"/>
+  <rect x="56" y="150" width="286" height="170" rx="18" fill="url(#panel)"/>
+  <text x="80" y="194" class="h">Terminal User</text>
+  <text x="80" y="222" class="b">- Runs `chat.sh` / `metaclaw`</text>
+  <text x="80" y="247" class="b">- Uses `/net`, `/scope`, `/save`</text>
+  <text x="80" y="272" class="b">- Keeps keys in host env only</text>
 
-  <rect x="56" y="378" width="326" height="188" rx="20" fill="url(#accentB)" filter="url(#shadow)"/>
-  <rect x="56" y="378" width="326" height="188" rx="20" fill="url(#panel)"/>
-  <text x="84" y="424" class="h">Obsidian Vault</text>
-  <text x="84" y="452" class="b">- Mounted read-only into container as `/vault`</text>
-  <text x="84" y="478" class="b">- Retrieval scope: `Research/` + `Learning/`</text>
-  <text x="84" y="504" class="b">- Host writes audited outside container</text>
-  <text x="84" y="530" class="b">- Avoid overlapping mount risk</text>
+  <rect x="390" y="150" width="328" height="170" rx="18" fill="url(#cardA)" filter="url(#shadow)"/>
+  <rect x="390" y="150" width="328" height="170" rx="18" fill="url(#panel)"/>
+  <text x="414" y="194" class="h">metaclaw-examples</text>
+  <text x="414" y="222" class="b">`obsidian-terminal-bot-advanced`</text>
+  <text x="414" y="247" class="b">- image-layer bot code</text>
+  <text x="414" y="272" class="b">- `agent.claw` policy + mounts</text>
 
-  <rect x="430" y="148" width="388" height="178" rx="20" fill="url(#accentA)" filter="url(#shadow)"/>
-  <rect x="430" y="148" width="388" height="178" rx="20" fill="url(#panel)"/>
-  <text x="458" y="194" class="h">metaclaw-examples</text>
-  <text x="458" y="222" class="b">`examples/obsidian-terminal-bot-advanced/`</text>
-  <text x="458" y="248" class="b">- `agent.claw` (policy + mounts + entrypoint)</text>
-  <text x="458" y="274" class="b">- image-layer bot code (`chat_once.py`)</text>
-  <text x="458" y="300" class="b">- build script pins image digest</text>
+  <rect x="766" y="150" width="298" height="170" rx="18" fill="url(#cardC)" filter="url(#shadow)"/>
+  <rect x="766" y="150" width="298" height="170" rx="18" fill="url(#panel)"/>
+  <text x="790" y="194" class="h">MetaClaw Engine</text>
+  <text x="790" y="222" class="b">validate -> compile -> run</text>
+  <text x="790" y="247" class="b">state/events -> inspect/debug</text>
+  <text x="790" y="272" class="b">runtime secret injection</text>
 
-  <rect x="430" y="378" width="388" height="188" rx="20" fill="url(#accentC)" filter="url(#shadow)"/>
-  <rect x="430" y="378" width="388" height="188" rx="20" fill="url(#panel)"/>
-  <text x="458" y="424" class="h">metaclaw (Engine)</text>
-  <text x="458" y="452" class="b">- validate -> compile -> policy -> run</text>
-  <text x="458" y="478" class="b">- runtime adapters: Apple / Podman / Docker</text>
-  <text x="458" y="504" class="b">- runtime-only secret injection</text>
-  <text x="458" y="530" class="b">- state + events for inspect/debug</text>
+  <rect x="1112" y="150" width="232" height="170" rx="18" fill="#0f172a" opacity="0.95" filter="url(#shadow)"/>
+  <rect x="1112" y="150" width="232" height="170" rx="18" fill="url(#panel)"/>
+  <text x="1134" y="194" class="h">Container Runtime</text>
+  <text x="1134" y="222" class="b">Apple / Podman / Docker</text>
+  <text x="1134" y="247" class="b">per-bot isolation</text>
+  <text x="1134" y="272" class="b">policy-enforced mounts/net</text>
 
-  <rect x="866" y="148" width="478" height="178" rx="20" fill="#0f172a" opacity="0.95" filter="url(#shadow)"/>
-  <rect x="886" y="176" width="214" height="124" rx="14" fill="url(#accentA)"/>
-  <rect x="1114" y="176" width="210" height="124" rx="14" fill="url(#accentB)"/>
-  <text x="908" y="208" class="h">OCI Image</text>
-  <text x="908" y="232" class="small">`metaclaw/obsidian-terminal-bot`</text>
-  <text x="908" y="254" class="small">digest pinned</text>
-  <text x="908" y="276" class="small">reproducible runtime</text>
-  <text x="1136" y="208" class="h">ClawCapsule</text>
-  <text x="1136" y="232" class="small">IR + policy + locks</text>
-  <text x="1136" y="254" class="small">inspectable artifact</text>
-  <text x="1136" y="276" class="small">diffable revisions</text>
+  <rect x="56" y="392" width="418" height="230" rx="20" fill="url(#cardB)" filter="url(#shadow)"/>
+  <rect x="56" y="392" width="418" height="230" rx="20" fill="url(#panel)"/>
+  <text x="84" y="436" class="h">Obsidian Vault + Host Paths</text>
+  <text x="84" y="464" class="b">- Vault mounted read-only in container</text>
+  <text x="84" y="489" class="b">- Host data paths outside vault</text>
+  <text x="84" y="514" class="b">- Save operation happens on host side</text>
+  <text x="84" y="539" class="b">- Write audit in host logs</text>
+  <text x="84" y="570" class="small">No overlapping mount shortcut to writable vault path</text>
 
-  <rect x="866" y="378" width="230" height="188" rx="20" fill="url(#accentD)" filter="url(#shadow)"/>
-  <rect x="866" y="378" width="230" height="188" rx="20" fill="url(#panel)"/>
-  <text x="892" y="424" class="h">Runtime</text>
-  <text x="892" y="452" class="b">Apple Container</text>
-  <text x="892" y="476" class="b">Podman</text>
-  <text x="892" y="500" class="b">Docker fallback</text>
-  <text x="892" y="532" class="small">isolated container per bot</text>
+  <rect x="520" y="392" width="414" height="230" rx="20" fill="#0b203a" opacity="0.95" filter="url(#shadow)"/>
+  <rect x="520" y="392" width="414" height="230" rx="20" fill="url(#panel)"/>
+  <text x="548" y="436" class="h">Artifacts</text>
+  <text x="548" y="464" class="b">- OCI image digest pinned by build step</text>
+  <text x="548" y="489" class="b">- ClawCapsule: IR + policy + locks</text>
+  <text x="548" y="514" class="b">- Capsule list/diff for traceable changes</text>
+  <text x="548" y="539" class="b">- Rebuild image when business code changes</text>
+  <text x="548" y="570" class="small">Reproducibility comes from image digest + locked config</text>
 
-  <rect x="1114" y="378" width="230" height="188" rx="20" fill="url(#accentC)" filter="url(#shadow)"/>
-  <rect x="1114" y="378" width="230" height="188" rx="20" fill="url(#panel)"/>
-  <text x="1140" y="424" class="h">Providers</text>
-  <text x="1140" y="452" class="b">Gemini OpenAI API</text>
-  <text x="1140" y="476" class="b">Tavily Web Search</text>
-  <text x="1140" y="500" class="small">keys injected at runtime</text>
-  <text x="1140" y="522" class="small">never stored in claw/capsule</text>
+  <rect x="980" y="392" width="364" height="230" rx="20" fill="#10233f" opacity="0.95" filter="url(#shadow)"/>
+  <rect x="980" y="392" width="364" height="230" rx="20" fill="url(#panel)"/>
+  <text x="1008" y="436" class="h">LLM + Web Providers</text>
+  <text x="1008" y="464" class="b">- Gemini OpenAI-compatible endpoint</text>
+  <text x="1008" y="489" class="b">- Tavily search when `/net out` enabled</text>
+  <text x="1008" y="514" class="b">- Keys injected via env name only</text>
+  <text x="1008" y="539" class="b">- No key persisted in `.claw`/capsule</text>
+  <text x="1008" y="570" class="small">Default network mode stays `none`</text>
 
-  <path d="M 382 238 C 410 238, 410 238, 430 238" class="line"/>
-  <path d="M 382 470 C 410 470, 410 470, 430 470" class="line"/>
-  <path d="M 624 326 C 624 344, 624 350, 624 378" class="line2"/>
-  <path d="M 818 238 C 840 238, 844 238, 866 238" class="line"/>
-  <path d="M 818 470 C 840 470, 844 470, 866 470" class="line3"/>
-  <path d="M 1096 470 C 1104 470, 1108 470, 1114 470" class="line4"/>
-  <path d="M 1206 300 C 1206 330, 1206 340, 1206 378" class="line"/>
+  <path d="M 342 235 C 360 235, 370 235, 390 235" class="link"/>
+  <path d="M 718 235 C 736 235, 746 235, 766 235" class="link"/>
+  <path d="M 1064 235 C 1080 235, 1092 235, 1112 235" class="link"/>
 
-  <text x="444" y="360" class="small">compile + policy</text>
-  <text x="840" y="222" class="small">build + pin digest</text>
-  <text x="848" y="454" class="small">run</text>
-  <text x="1114" y="356" class="small">runtime calls</text>
+  <path d="M 915 320 C 915 350, 915 360, 915 392" class="linkSoft"/>
+  <path d="M 1188 320 C 1188 350, 1188 360, 1188 392" class="linkWarn"/>
+  <path d="M 260 320 C 260 350, 260 360, 260 392" class="linkSoft"/>
+
+  <text x="728" y="347" class="small">run produces traceable state</text>
+  <text x="1030" y="347" class="small">networked calls only when enabled</text>
+  <text x="154" y="347" class="small">controlled save returns to vault</text>
 </svg>

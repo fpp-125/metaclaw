@@ -16,7 +16,6 @@
       .h { font: 700 43px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
       .name { font: 700 27px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
       .desc { font: 600 18px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f1f5f9; }
-      .url { font: 600 16px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
     </style>
   </defs>
 
@@ -28,21 +27,17 @@
 
   <rect x="118" y="154" width="284" height="138" rx="18" fill="#2b4ec2"/>
   <text x="138" y="192" class="name">metaclaw</text>
-  <text x="138" y="220" class="desc">Engine core</text>
-  <text x="138" y="246" class="url">github.com/fpp-125/metaclaw</text>
+  <text x="138" y="226" class="desc">Engine core</text>
 
   <rect x="420" y="154" width="284" height="138" rx="18" fill="#1a7773"/>
   <text x="440" y="192" class="name">metaclaw-examples</text>
-  <text x="440" y="220" class="desc">Runnable templates</text>
-  <text x="440" y="246" class="url">github.com/fpp-125/metaclaw-examples</text>
+  <text x="440" y="226" class="desc">Runnable templates</text>
 
   <rect x="722" y="154" width="284" height="138" rx="18" fill="#aa5511"/>
   <text x="742" y="192" class="name">metaclaw-skills</text>
-  <text x="742" y="220" class="desc">Reusable capabilities</text>
-  <text x="742" y="246" class="url">github.com/fpp-125/metaclaw-skills</text>
+  <text x="742" y="226" class="desc">Reusable capabilities</text>
 
   <rect x="1024" y="154" width="284" height="138" rx="18" fill="#6d3ace"/>
   <text x="1044" y="192" class="name">metaclaw-registry</text>
-  <text x="1044" y="220" class="desc">Publish/distribution API</text>
-  <text x="1044" y="246" class="url">github.com/fpp-125/metaclaw-registry</text>
+  <text x="1044" y="226" class="desc">Publish/distribution API</text>
 </svg>
