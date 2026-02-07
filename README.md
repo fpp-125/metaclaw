@@ -9,6 +9,13 @@ This MVP implements a daemonless Go CLI that:
 - Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
 - Stores lifecycle state in SQLite and logs events as JSONL.
 
+## Repository Boundary
+
+This repo contains engine capabilities only.
+
+- includes: CLI (`init/validate/compile/run/ps/logs/inspect/debug`), Clawfile schemas, compiler/locks/policy, runtime adapters, state store
+- excludes: concrete business bots/workflows, reusable skill catalog content, registry backend service implementation
+
 ## Why MetaClaw
 
 - Runtime-isolated execution is implemented today:
@@ -275,10 +282,17 @@ METACLAW_TEST_RUNTIME=docker go test -tags=integration ./internal/manager -run T
 
 MetaClaw ecosystem repos:
 
-- `metaclaw` (this repo): engine, compiler, runtime manager.
-- `metaclaw-skills`: reusable skill modules + capability contracts.
-- `metaclaw-examples`: starter templates and runnable examples.
-- `metaclaw-registry`: publish/discovery API for skill/capsule metadata (OCI refs + digests).
+- `metaclaw` (this repo): engine, compiler, runtime manager
+- `metaclaw-skills`: reusable capabilities (`SKILL.md` + `capability.contract`)
+- `metaclaw-examples`: runnable end-to-end examples/templates only
+- `metaclaw-registry`: publishing/distribution backend (metadata + policy), not business bot code
+
+Repository links:
+
+- https://github.com/fpp-125/metaclaw
+- https://github.com/fpp-125/metaclaw-skills
+- https://github.com/fpp-125/metaclaw-examples
+- https://github.com/fpp-125/metaclaw-registry
 
 Cross-repo smoke test:
 
