@@ -1,14 +1,15 @@
 # MetaClaw
 
-This README is intentionally comprehensive because it serves both engine documentation and bot usage guides; if you prefer a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
+This README is intentionally comprehensive: it covers both engine documentation and bot usage guides. For a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
 
 MetaClaw is a local-first infrastructure engine for AI agents.
 
-This MVP implements a daemonless Go CLI that:
+MetaClaw provides a daemonless Go CLI that:
 - Parses and validates `.claw` files.
 - Compiles `.claw` into immutable `ClawCapsule` bundles.
 - Enforces deny-by-default habitat policies.
 - Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
+- Supports both one-shot ephemeral runs and long-running detached agent containers (`--detach`).
 - Stores lifecycle state in SQLite and logs events as JSONL.
 
 ## Repository Boundary
@@ -31,12 +32,13 @@ This repo contains engine capabilities only.
 
 ## Why MetaClaw
 
-- Runtime-isolated execution is implemented today:
+- Runtime-isolated execution:
   - Apple Container adapter (macOS).
   - Podman adapter (Linux/rootless-first).
   - Docker adapter (fallback/common environments).
-- Daemonless control plane:
-  - MetaClaw CLI compiles/dispatches and exits.
+- Daemonless control plane with flexible lifecycle:
+  - MetaClaw CLI compiles/dispatches and exits immediately.
+  - Agents run either as one-shot ephemeral jobs or detached long-running containers (`--detach`).
   - Long-running behavior lives in the agent container, not a monolithic host daemon.
 - Security-as-protocol defaults:
   - Network default is `none`.

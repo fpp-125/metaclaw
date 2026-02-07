@@ -73,15 +73,16 @@
   <text x="790" y="194" class="h">MetaClaw Engine</text>
   <text x="790" y="220" class="b">- validate -> compile -> run</text>
   <text x="790" y="244" class="b">- enforce habitat policy gates</text>
-  <text x="790" y="268" class="b">- inject secrets by env name only</text>
-  <text x="790" y="292" class="b">- normalize Apple/Podman/Docker</text>
+  <text x="790" y="268" class="b">- lifecycle: ephemeral or detached daemon</text>
+  <text x="790" y="292" class="b">- inject secrets by env name only</text>
 
   <rect x="1112" y="150" width="232" height="170" rx="18" fill="#0f172a" opacity="0.95" filter="url(#shadow)"/>
   <rect x="1112" y="150" width="232" height="170" rx="18" fill="url(#panel)"/>
   <text x="1134" y="194" class="h">Container Runtime</text>
   <text x="1134" y="222" class="b">Apple / Podman / Docker</text>
   <text x="1134" y="247" class="b">per-bot isolation</text>
-  <text x="1134" y="272" class="b">policy-enforced mounts/net</text>
+  <text x="1134" y="272" class="b">ephemeral + detached runs</text>
+  <text x="1134" y="297" class="b">policy-enforced mounts/net</text>
 
   <rect x="56" y="392" width="418" height="230" rx="20" fill="url(#cardB)" filter="url(#shadow)"/>
   <rect x="56" y="392" width="418" height="230" rx="20" fill="url(#panel)"/>
