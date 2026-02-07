@@ -37,7 +37,6 @@
       .h { font: 700 22px 'Avenir Next', 'Segoe UI', sans-serif; fill: #f8fafc; }
       .b { font: 500 16px 'Avenir Next', 'Segoe UI', sans-serif; fill: #e2e8f0; }
       .small { font: 500 14px 'Avenir Next', 'Segoe UI', sans-serif; fill: #cbd5e1; }
-      .accent { font: 600 13px 'Avenir Next', 'Segoe UI', sans-serif; fill: #fde68a; }
       .link { stroke: #cbd5e1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
       .linkSoft { stroke: #93c5fd; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
       .linkWarn { stroke: #fde68a; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
@@ -64,9 +63,6 @@
   <text x="414" y="222" class="b">- Clawfile policy + mounts + lifecycle</text>
   <text x="414" y="247" class="b">- Image-layer business code</text>
   <text x="414" y="272" class="b">- Example/project layout or custom repo</text>
-
-  <rect x="760" y="144" width="310" height="182" rx="22" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="7 6" opacity="0.85"/>
-  <text x="780" y="165" class="accent">engine value layer</text>
 
   <rect x="766" y="150" width="298" height="170" rx="18" fill="url(#cardC)" filter="url(#shadow)"/>
   <rect x="766" y="150" width="298" height="170" rx="18" fill="url(#panel)"/>
@@ -117,9 +113,5 @@
 
   <path d="M 915 320 C 915 350, 915 360, 915 392" class="linkSoft"/>
   <path d="M 1188 320 C 1188 350, 1188 360, 1188 392" class="linkWarn"/>
-  <path d="M 554 320 C 554 350, 554 360, 554 392" class="linkSoft"/>
-
-  <text x="728" y="347" class="small">engine outputs guarantees and traces</text>
-  <text x="1030" y="347" class="small">networked calls only when enabled</text>
-  <text x="394" y="347" class="small">vault mount/save constraints come from bot definition</text>
+  <path d="M 554 320 C 520 350, 390 360, 265 392" class="linkSoft"/>
 </svg>
