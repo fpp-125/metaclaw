@@ -1,4 +1,4 @@
-module github.com/fpp-125/metaclaw
+module github.com/metaclaw/metaclaw
 
 go 1.25.7
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fpp-125/metaclaw/internal/manager"
+	"github.com/metaclaw/metaclaw/internal/manager"
 )
 
 const (

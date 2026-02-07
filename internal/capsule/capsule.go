@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/fpp-125/metaclaw/internal/locks"
-	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/metaclaw/metaclaw/internal/locks"
+	"github.com/metaclaw/metaclaw/internal/policy"
 )
 
 type Manifest struct {
@@ -21,6 +21,7 @@ type Manifest struct {
 	Digests              map[string]string `json:"digests"`
 	RuntimeCompatibility RuntimeContract   `json:"runtimeCompatibility"`
 	Locks                LockManifest      `json:"locks"`
+	Release              *ReleaseMetadata  `json:"release,omitempty"`
 }
 
 type RuntimeContract struct {
@@ -32,6 +33,32 @@ type LockManifest struct {
 	Dependency string `json:"dependency"`
 	Image      string `json:"image"`
 	Source     string `json:"source"`
+}
+
+type ReleaseMetadata struct {
+	Profile    string            `json:"profile"`
+	CreatedAt  string            `json:"createdAt"`
+	Provenance ReleaseProvenance `json:"provenance"`
+	Signature  ReleaseSignature  `json:"signature"`
+}
+
+type ReleaseProvenance struct {
+	Version         string            `json:"version"`
+	Builder         string            `json:"builder"`
+	CreatedAt       string            `json:"createdAt"`
+	Profile         string            `json:"profile"`
+	SourceGitCommit string            `json:"sourceGitCommit,omitempty"`
+	SourceGitTree   string            `json:"sourceGitTree,omitempty"`
+	SourceFileCount int               `json:"sourceFileCount"`
+	Digests         map[string]string `json:"digests"`
+}
+
+type ReleaseSignature struct {
+	Version       string `json:"version"`
+	Algorithm     string `json:"algorithm"`
+	KeyID         string `json:"keyId"`
+	PayloadDigest string `json:"payloadDigest"`
+	Value         string `json:"value"`
 }
 
 type Capsule struct {

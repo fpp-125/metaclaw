@@ -26,6 +26,39 @@
         "image": {"type": "string"},
         "source": {"type": "string"}
       }
+    },
+    "release": {
+      "type": "object",
+      "required": ["profile", "createdAt", "provenance", "signature"],
+      "properties": {
+        "profile": {"type": "string"},
+        "createdAt": {"type": "string"},
+        "provenance": {
+          "type": "object",
+          "required": ["version", "builder", "createdAt", "profile", "sourceFileCount", "digests"],
+          "properties": {
+            "version": {"type": "string"},
+            "builder": {"type": "string"},
+            "createdAt": {"type": "string"},
+            "profile": {"type": "string"},
+            "sourceGitCommit": {"type": "string"},
+            "sourceGitTree": {"type": "string"},
+            "sourceFileCount": {"type": "integer"},
+            "digests": {"type": "object"}
+          }
+        },
+        "signature": {
+          "type": "object",
+          "required": ["version", "algorithm", "keyId", "payloadDigest", "value"],
+          "properties": {
+            "version": {"type": "string"},
+            "algorithm": {"type": "string"},
+            "keyId": {"type": "string"},
+            "payloadDigest": {"type": "string"},
+            "value": {"type": "string"}
+          }
+        }
+      }
     }
   }
 }

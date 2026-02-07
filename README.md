@@ -87,6 +87,19 @@ metaclaw capsule list --state-dir=.metaclaw --agent=hello --since=2026-02-01
 metaclaw capsule diff <id1> <id2> --state-dir=.metaclaw
 ```
 
+Release and verification:
+
+```bash
+# Optional: generate a signing key pair once
+metaclaw keygen
+
+# Build a signed release bundle (strict mode recommended)
+metaclaw release agent.claw --strict --state-dir=.metaclaw
+
+# Verify signed release bundle (signature + capsule digest integrity)
+metaclaw verify .metaclaw/releases/rel_<release-id>
+```
+
 ## Obsidian Bot Wizard
 
 Run step-by-step interactive wizard:
@@ -133,6 +146,7 @@ Useful flags:
 - CLI overrides that attempt to change security boundaries are blocked.
 - LLM keys are injected at run time (`--llm-api-key-env` recommended), not stored in capsule artifacts.
 - Runtime adapters pass env by key reference (`-e KEY`) instead of inlining `KEY=value` in process args.
+- Strict release mode (`metaclaw release --strict`) blocks risky configs such as `network: all` and produces signed provenance artifacts.
 
 ## LLM Provider Contract
 

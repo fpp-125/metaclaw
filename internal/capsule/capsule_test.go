@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fpp-125/metaclaw/internal/locks"
-	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/metaclaw/metaclaw/internal/locks"
+	"github.com/metaclaw/metaclaw/internal/policy"
 )
 
 func TestLoadVerifiesManifestAndPayloadDigests(t *testing.T) {

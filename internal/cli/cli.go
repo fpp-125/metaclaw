@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/fpp-125/metaclaw/internal/capsule"
-	"github.com/fpp-125/metaclaw/internal/compiler"
-	"github.com/fpp-125/metaclaw/internal/manager"
+	"github.com/metaclaw/metaclaw/internal/capsule"
+	"github.com/metaclaw/metaclaw/internal/compiler"
+	"github.com/metaclaw/metaclaw/internal/manager"
 )
 
 func Execute(args []string) int {
@@ -29,6 +29,12 @@ func Execute(args []string) int {
 		return runValidate(args[1:])
 	case "compile":
 		return runCompile(args[1:])
+	case "release":
+		return runRelease(args[1:])
+	case "verify":
+		return runVerify(args[1:])
+	case "keygen":
+		return runKeygen(args[1:])
 	case "run":
 		return runRun(ctx, args[1:])
 	case "ps":
@@ -409,6 +415,9 @@ commands:
   wizard [--interactive] [--project-dir=./my-bot] [--out=obsidian-bot.claw] [--vault=./vault] [--provider=gemini_openai]
   validate <file.claw>
   compile <file.claw> [-o dir]
+  keygen [--private-key=.metaclaw/keys/release.ed25519.pem] [--public-key=.metaclaw/keys/release.ed25519.pub.pem] [--force]
+  release <file.claw|capsule_dir> [--strict] [--state-dir=.metaclaw] [--out=dir] [--sign-key=path] [--key-id=id]
+  verify <release_dir|capsule_dir> [--public-key=path] [--require-release]
   run <file.claw|capsule_dir> [--detach] [--runtime=podman|apple_container|docker] [--llm-api-key=..|--llm-api-key-env=..]
   ps [--json]
   logs <run-id> [--follow]

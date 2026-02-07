@@ -3,7 +3,7 @@ package applecontainer
 import (
 	"testing"
 
-	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/metaclaw/metaclaw/internal/policy"
 )
 
 func TestPolicyFlagsUseEnvKeysWithoutInliningSecrets(t *testing.T) {
