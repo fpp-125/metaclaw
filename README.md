@@ -9,6 +9,26 @@ This MVP implements a daemonless Go CLI that:
 - Runs agent containers through runtime adapters (Podman, Apple Container, Docker fallback).
 - Stores lifecycle state in SQLite and logs events as JSONL.
 
+## Why MetaClaw (Current Advantages)
+
+- Runtime-isolated execution is implemented today:
+  - Apple Container adapter (macOS).
+  - Podman adapter (Linux/rootless-first).
+  - Docker adapter (fallback/common environments).
+- Daemonless control plane:
+  - MetaClaw CLI compiles/dispatches and exits.
+  - Long-running behavior lives in the agent container, not a monolithic host daemon.
+- Security-as-protocol defaults:
+  - Network default is `none`.
+  - Mounts must be explicitly declared.
+  - Env is policy-allowlisted (including LLM bridge keys only when declared).
+- Reproducibility/auditability:
+  - ClawCapsule artifact with IR + policy + locks.
+  - Capsule inspection and diff (`metaclaw capsule list|diff`) for traceable changes.
+- Secret hygiene:
+  - API keys injected at runtime (`--llm-api-key-env` recommended).
+  - Keys are not written into `.claw` or capsule artifacts.
+
 ## Commands
 
 ```bash
