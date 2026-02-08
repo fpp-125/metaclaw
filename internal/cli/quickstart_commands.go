@@ -99,7 +99,7 @@ func runDoctor(args []string) int {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	opts := doctorOptions{
 		Runtime:     "auto",
-		LLMKeyEnv:   "GEMINI_API_KEY",
+		LLMKeyEnv:   "OPENAI_FORMAT_API_KEY",
 		WebKeyEnv:   "TAVILY_API_KEY",
 		CheckJQ:     true,
 		CheckPython: true,
@@ -115,7 +115,7 @@ func runDoctor(args []string) int {
 		return 1
 	}
 	if len(fs.Args()) != 0 {
-		fmt.Fprintln(os.Stderr, "usage: metaclaw doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=GEMINI_API_KEY] [--web-key-env=TAVILY_API_KEY] [--require-llm-key] [--json]")
+		fmt.Fprintln(os.Stderr, "usage: metaclaw doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=OPENAI_FORMAT_API_KEY] [--web-key-env=TAVILY_API_KEY] [--require-llm-key] [--json]")
 		return 1
 	}
 
@@ -151,7 +151,7 @@ func runQuickstart(args []string) int {
 	opts := quickstartOptions{
 		ProjectDir: "./metaclaw-obsidian-bot",
 		Runtime:    "auto",
-		LLMKeyEnv:  "GEMINI_API_KEY",
+		LLMKeyEnv:  "OPENAI_FORMAT_API_KEY",
 		WebKeyEnv:  "TAVILY_API_KEY",
 		Profile:    "obsidian-chat",
 	}
@@ -317,7 +317,7 @@ func collectDoctorReport(opts doctorOptions) (doctorReport, error) {
 
 	llmEnv := strings.TrimSpace(opts.LLMKeyEnv)
 	if llmEnv == "" {
-		llmEnv = "GEMINI_API_KEY"
+		llmEnv = "OPENAI_FORMAT_API_KEY"
 	}
 	if strings.TrimSpace(os.Getenv(llmEnv)) == "" {
 		status := doctorStatusWarn

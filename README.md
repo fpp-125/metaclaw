@@ -6,7 +6,7 @@ For a faster start, clone the repo and ask your AI assistant to walk you through
 
 ```bash
 # 1) Check runtime + keys + vault path
-metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT --llm-key-env=GEMINI_API_KEY
+metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT --llm-key-env=OPENAI_FORMAT_API_KEY
 
 # 2) Bootstrap, configure, build, and enter chat
 metaclaw quickstart obsidian \
