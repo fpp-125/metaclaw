@@ -74,7 +74,7 @@ exec python3 "$PROJECT_DIR/chat_tui.py" "$@"
 	if !ok {
 		t.Fatal("expected obsidian-research profile")
 	}
-	if err := rewriteQuickstartChatScript(path, "/tmp/metaclaw-project/.metaclaw", "GEMINI_API_KEY", "TAVILY_API_KEY", profile); err != nil {
+	if err := rewriteQuickstartChatScript(path, "/tmp/metaclaw-project/.metaclaw", "GEMINI_API_KEY", "TAVILY_API_KEY", "podman", profile); err != nil {
 		t.Fatalf("rewrite chat.sh: %v", err)
 	}
 	b, err := os.ReadFile(path)
@@ -87,6 +87,9 @@ exec python3 "$PROJECT_DIR/chat_tui.py" "$@"
 	}
 	if !strings.Contains(text, "BOT_HOST_DATA_DIR") {
 		t.Fatalf("expected host data export: %s", text)
+	}
+	if !strings.Contains(text, "RUNTIME_TARGET") {
+		t.Fatalf("expected runtime target export: %s", text)
 	}
 	if !strings.Contains(text, "LLM_KEY_ENV") || !strings.Contains(text, "TAVILY_KEY_ENV") {
 		t.Fatalf("expected key env exports: %s", text)
@@ -126,5 +129,88 @@ func TestResolveRequestedRuntimeRejectsInvalid(t *testing.T) {
 	_, _, err := resolveRequestedRuntime("not-a-runtime")
 	if err == nil {
 		t.Fatal("expected invalid runtime error")
+	}
+}
+
+func TestBuildQuickstartRuntimeCandidatesAuto(t *testing.T) {
+	candidates := buildQuickstartRuntimeCandidates("auto", "apple_container")
+	if len(candidates) == 0 {
+		t.Fatal("expected non-empty candidates")
+	}
+	if candidates[0] != "apple_container" {
+		t.Fatalf("expected selected runtime first, got %v", candidates)
+	}
+	seen := map[string]struct{}{}
+	for _, c := range candidates {
+		if _, ok := seen[c]; ok {
+			t.Fatalf("found duplicate runtime candidate %q in %v", c, candidates)
+		}
+		seen[c] = struct{}{}
+	}
+}
+
+func TestBuildQuickstartRuntimeCandidatesExplicit(t *testing.T) {
+	candidates := buildQuickstartRuntimeCandidates("podman", "podman")
+	if len(candidates) != 1 || candidates[0] != "podman" {
+		t.Fatalf("expected single explicit candidate, got %v", candidates)
+	}
+}
+
+func TestParseApplePinnedImageRef(t *testing.T) {
+	raw := []byte(`[{"name":"metaclaw/obsidian-terminal-bot:local","index":{"digest":"sha256:abc123"}}]`)
+	got, err := parseApplePinnedImageRef(raw, "metaclaw/obsidian-terminal-bot:local")
+	if err != nil {
+		t.Fatalf("parseApplePinnedImageRef error: %v", err)
+	}
+	if got != "metaclaw/obsidian-terminal-bot:local@sha256:abc123" {
+		t.Fatalf("unexpected pinned ref: %s", got)
+	}
+}
+
+func TestRewriteRuntimeImageRef(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.claw")
+	input := `agent:
+  runtime:
+    image: metaclaw/obsidian-terminal-bot:local@sha256:old
+`
+	if err := os.WriteFile(path, []byte(input), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := rewriteRuntimeImageRef(path, "localhost/metaclaw/obsidian-terminal-bot:local@sha256:new"); err != nil {
+		t.Fatalf("rewriteRuntimeImageRef: %v", err)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read rewritten file: %v", err)
+	}
+	text := string(b)
+	if !strings.Contains(text, "image: localhost/metaclaw/obsidian-terminal-bot:local@sha256:new") {
+		t.Fatalf("runtime image not rewritten: %s", text)
+	}
+}
+
+func TestRewriteQuickstartRuntimeDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "chat.sh")
+	input := `#!/usr/bin/env bash
+set -euo pipefail
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+export RUNTIME_TARGET="${RUNTIME_TARGET:-apple_container}"
+exec python3 "$PROJECT_DIR/chat_tui.py" "$@"
+`
+	if err := os.WriteFile(path, []byte(input), 0o755); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := rewriteQuickstartRuntimeDefault(path, "podman"); err != nil {
+		t.Fatalf("rewriteQuickstartRuntimeDefault: %v", err)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read rewritten chat.sh: %v", err)
+	}
+	got := string(b)
+	if !strings.Contains(got, `export RUNTIME_TARGET="${RUNTIME_TARGET:-podman}"`) {
+		t.Fatalf("runtime target default not updated: %s", got)
 	}
 }

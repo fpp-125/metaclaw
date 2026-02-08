@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -65,6 +66,9 @@ const (
 	doctorStatusPass = "pass"
 	doctorStatusWarn = "warn"
 	doctorStatusFail = "fail"
+
+	quickstartDefaultImageRepo = "metaclaw/obsidian-terminal-bot"
+	quickstartDefaultImageTag  = "local"
 )
 
 var obsidianProfiles = map[string]obsidianProfile{
@@ -234,7 +238,7 @@ func runQuickstart(args []string) int {
 		return 1
 	}
 
-	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, profile, opts.Force); err != nil {
+	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, report.SelectedRuntime, profile, opts.Force); err != nil {
 		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
 		return 1
 	}
@@ -245,12 +249,46 @@ func runQuickstart(args []string) int {
 	fmt.Printf("profile: %s\n", profile.Name)
 	fmt.Printf("runtime: %s\n", report.SelectedRuntime)
 
+	effectiveRuntime := report.SelectedRuntime
 	if !opts.SkipBuild {
-		fmt.Println("building bot image...")
-		if err := runScript(filepath.Join(opts.ProjectDir, "build_image.sh"), opts.ProjectDir, map[string]string{
-			"RUNTIME_BIN": report.RuntimeBin,
-		}, false); err != nil {
-			fmt.Fprintf(os.Stderr, "quickstart failed: build_image.sh: %v\n", err)
+		candidates := buildQuickstartRuntimeCandidates(opts.Runtime, report.SelectedRuntime)
+		var lastErr error
+		var built bool
+		for i, target := range candidates {
+			bin := runtimeBinaryForTarget(target)
+			if bin == "" || !commandExists(bin) {
+				continue
+			}
+			if i == 0 {
+				fmt.Printf("building bot image with %s...\n", target)
+			} else {
+				fmt.Printf("retrying bot image build with fallback runtime %s...\n", target)
+			}
+			if err := buildQuickstartImage(opts.ProjectDir, target, bin); err != nil {
+				lastErr = err
+				if strings.TrimSpace(opts.Runtime) != "auto" {
+					fmt.Fprintf(os.Stderr, "quickstart failed: build image with %s: %v\n", target, err)
+					return 1
+				}
+				fmt.Fprintf(os.Stderr, "warning: build failed on %s: %v\n", target, err)
+				continue
+			}
+			effectiveRuntime = target
+			built = true
+			if target != report.SelectedRuntime {
+				if err := rewriteQuickstartRuntimeDefault(filepath.Join(opts.ProjectDir, "chat.sh"), target); err != nil {
+					fmt.Fprintf(os.Stderr, "quickstart failed: update chat runtime default: %v\n", err)
+					return 1
+				}
+				fmt.Printf("runtime fallback selected: %s\n", target)
+			}
+			break
+		}
+		if !built {
+			if lastErr == nil {
+				lastErr = errors.New("no available runtime could build the image")
+			}
+			fmt.Fprintf(os.Stderr, "quickstart failed: build image: %v\n", lastErr)
 			return 1
 		}
 	}
@@ -270,7 +308,7 @@ func runQuickstart(args []string) int {
 	fmt.Println("launching chat...")
 	if err := runScript(filepath.Join(opts.ProjectDir, "chat.sh"), opts.ProjectDir, map[string]string{
 		"METACLAW_BIN":      exePath,
-		"RUNTIME_TARGET":    report.SelectedRuntime,
+		"RUNTIME_TARGET":    effectiveRuntime,
 		"LLM_KEY_ENV":       opts.LLMKeyEnv,
 		"TAVILY_KEY_ENV":    opts.WebKeyEnv,
 		"BOT_HOST_DATA_DIR": hostDataDir,
@@ -410,9 +448,39 @@ func resolveRequestedRuntime(requested string) (string, string, error) {
 
 func runtimeProbeOrder() []string {
 	if goruntime.GOOS == "darwin" {
-		return []string{"apple_container", "docker", "podman"}
+		return []string{"apple_container", "podman", "docker"}
 	}
 	return []string{"podman", "docker", "apple_container"}
+}
+
+func buildQuickstartRuntimeCandidates(requested, selected string) []string {
+	rt := strings.TrimSpace(requested)
+	seen := map[string]struct{}{}
+	out := make([]string, 0, 4)
+	add := func(target string) {
+		target = strings.TrimSpace(target)
+		if target == "" {
+			return
+		}
+		if _, ok := seen[target]; ok {
+			return
+		}
+		seen[target] = struct{}{}
+		out = append(out, target)
+	}
+
+	if rt == "" || rt == "auto" {
+		add(selected)
+		for _, candidate := range runtimeProbeOrder() {
+			add(candidate)
+		}
+		return out
+	}
+	add(selected)
+	if len(out) == 0 {
+		add(rt)
+	}
+	return out
 }
 
 func runtimeBinaryForTarget(target string) string {
@@ -576,7 +644,7 @@ func runGit(dir string, args ...string) error {
 	return cmd.Run()
 }
 
-func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, llmKeyEnv, webKeyEnv string, profile obsidianProfile, force bool) error {
+func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile, force bool) error {
 	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		return fmt.Errorf("create project dir: %w", err)
 	}
@@ -607,7 +675,7 @@ func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, ll
 	if err := rewriteObsidianAgentFile(filepath.Join(projectDir, "agent.claw"), vaultPath, hostDataDir, profile.NetworkMode); err != nil {
 		return err
 	}
-	if err := rewriteQuickstartChatScript(filepath.Join(projectDir, "chat.sh"), hostDataDir, llmKeyEnv, webKeyEnv, profile); err != nil {
+	if err := rewriteQuickstartChatScript(filepath.Join(projectDir, "chat.sh"), hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget, profile); err != nil {
 		return err
 	}
 	if err := writeObsidianProfileDefaults(filepath.Join(hostDataDir, "config", "ui.defaults.json"), profile); err != nil {
@@ -698,7 +766,7 @@ func replaceFirstNetworkMode(content, networkMode string) string {
 	return strings.Join(lines, "\n")
 }
 
-func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv string, profile obsidianProfile) error {
+func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read chat.sh: %w", err)
@@ -710,6 +778,7 @@ func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv string,
 	injection := strings.Join([]string{
 		"export BOT_HOST_DATA_DIR=\"${BOT_HOST_DATA_DIR:-$PROJECT_DIR/.metaclaw}\"",
 		"export BOT_STATE_DIR=\"${BOT_STATE_DIR:-$BOT_HOST_DATA_DIR/state}\"",
+		"export RUNTIME_TARGET=\"${RUNTIME_TARGET:-" + runtimeTarget + "}\"",
 		"export LLM_KEY_ENV=\"${LLM_KEY_ENV:-" + llmKeyEnv + "}\"",
 		"export TAVILY_KEY_ENV=\"${TAVILY_KEY_ENV:-" + webKeyEnv + "}\"",
 	}, "\n")
@@ -728,6 +797,43 @@ func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv string,
 	}
 
 	if err := os.WriteFile(path, []byte(text), 0o755); err != nil {
+		return fmt.Errorf("write chat.sh: %w", err)
+	}
+	return nil
+}
+
+func rewriteQuickstartRuntimeDefault(path, runtimeTarget string) error {
+	runtimeTarget = strings.TrimSpace(runtimeTarget)
+	if runtimeTarget == "" {
+		return errors.New("runtime target is empty")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read chat.sh: %w", err)
+	}
+	text := string(b)
+	lines := strings.Split(text, "\n")
+	replaced := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "export RUNTIME_TARGET=") {
+			continue
+		}
+		lines[i] = "export RUNTIME_TARGET=\"${RUNTIME_TARGET:-" + runtimeTarget + "}\""
+		replaced = true
+	}
+	if !replaced {
+		marker := "PROJECT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\""
+		injection := "export RUNTIME_TARGET=\"${RUNTIME_TARGET:-" + runtimeTarget + "}\""
+		if strings.Contains(text, marker) {
+			text = strings.Replace(text, marker, marker+"\n"+injection, 1)
+			lines = strings.Split(text, "\n")
+		} else {
+			lines = append([]string{injection}, lines...)
+		}
+	}
+	out := strings.Join(lines, "\n")
+	if err := os.WriteFile(path, []byte(out), 0o755); err != nil {
 		return fmt.Errorf("write chat.sh: %w", err)
 	}
 	return nil
@@ -763,6 +869,188 @@ func writeQuickstartEnvExample(path, llmKeyEnv, webKeyEnv string) error {
 	}, "\n")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write .env.example: %w", err)
+	}
+	return nil
+}
+
+func buildQuickstartImage(projectDir, runtimeTarget, runtimeBin string) error {
+	scriptErr := runScript(filepath.Join(projectDir, "build_image.sh"), projectDir, map[string]string{
+		"RUNTIME_BIN": runtimeBin,
+	}, false)
+	if scriptErr == nil {
+		return nil
+	}
+	pinnedRef, recoverErr := recoverQuickstartPinnedImage(projectDir, runtimeTarget, runtimeBin)
+	if recoverErr != nil {
+		return fmt.Errorf("%w (pin recovery failed: %v)", scriptErr, recoverErr)
+	}
+	fmt.Fprintf(os.Stderr, "warning: build script exited with %v; recovered runtime.image as %s\n", scriptErr, pinnedRef)
+	return nil
+}
+
+func recoverQuickstartPinnedImage(projectDir, runtimeTarget, runtimeBin string) (string, error) {
+	taggedImage := inferQuickstartTaggedImage(projectDir)
+	pinnedRef, err := resolvePinnedImageRef(runtimeTarget, runtimeBin, taggedImage)
+	if err != nil {
+		return "", err
+	}
+	if runtimeTarget != "docker" {
+		if err := tagPinnedImageRef(runtimeBin, taggedImage, pinnedRef); err != nil {
+			return "", fmt.Errorf("tag pinned image: %w", err)
+		}
+	}
+	agentPath := filepath.Join(projectDir, "agent.claw")
+	if err := rewriteRuntimeImageRef(agentPath, pinnedRef); err != nil {
+		return "", err
+	}
+	return pinnedRef, nil
+}
+
+func inferQuickstartTaggedImage(projectDir string) string {
+	repo := strings.TrimSpace(os.Getenv("IMAGE_REPO"))
+	tag := strings.TrimSpace(os.Getenv("IMAGE_TAG"))
+	if repo != "" || tag != "" {
+		if repo == "" {
+			repo = quickstartDefaultImageRepo
+		}
+		if tag == "" {
+			tag = quickstartDefaultImageTag
+		}
+		return repo + ":" + tag
+	}
+
+	agentPath := filepath.Join(projectDir, "agent.claw")
+	current, err := readRuntimeImageRef(agentPath)
+	if err == nil && strings.TrimSpace(current) != "" {
+		return strings.SplitN(current, "@", 2)[0]
+	}
+	return quickstartDefaultImageRepo + ":" + quickstartDefaultImageTag
+}
+
+func resolvePinnedImageRef(runtimeTarget, runtimeBin, taggedImage string) (string, error) {
+	switch runtimeTarget {
+	case "apple_container":
+		return resolveApplePinnedImageRef(runtimeBin, taggedImage)
+	case "podman", "docker":
+		return resolveOCICompatiblePinnedImageRef(runtimeBin, taggedImage)
+	default:
+		return "", fmt.Errorf("unsupported runtime target for pin recovery: %s", runtimeTarget)
+	}
+}
+
+func resolveApplePinnedImageRef(runtimeBin, taggedImage string) (string, error) {
+	out, err := exec.Command(runtimeBin, "image", "inspect", taggedImage).Output()
+	if err != nil {
+		return "", fmt.Errorf("inspect image %s: %w", taggedImage, err)
+	}
+	return parseApplePinnedImageRef(out, taggedImage)
+}
+
+func parseApplePinnedImageRef(raw []byte, fallbackImage string) (string, error) {
+	type appleIndex struct {
+		Digest string `json:"digest"`
+	}
+	type appleInspect struct {
+		Name  string     `json:"name"`
+		Index appleIndex `json:"index"`
+	}
+
+	var entries []appleInspect
+	if err := json.Unmarshal(bytes.TrimSpace(raw), &entries); err != nil {
+		return "", fmt.Errorf("parse inspect output: %w", err)
+	}
+	for _, item := range entries {
+		digest := strings.TrimSpace(item.Index.Digest)
+		if !strings.HasPrefix(digest, "sha256:") {
+			continue
+		}
+		name := strings.TrimSpace(item.Name)
+		if name == "" {
+			name = fallbackImage
+		}
+		name = strings.SplitN(name, "@", 2)[0]
+		return name + "@" + digest, nil
+	}
+	return "", fmt.Errorf("digest not found in inspect output")
+}
+
+func resolveOCICompatiblePinnedImageRef(runtimeBin, taggedImage string) (string, error) {
+	repoDigestsOut, err := exec.Command(runtimeBin, "image", "inspect", taggedImage, "--format", "{{json .RepoDigests}}").Output()
+	if err == nil {
+		var repoDigests []string
+		if unmarshalErr := json.Unmarshal(bytes.TrimSpace(repoDigestsOut), &repoDigests); unmarshalErr == nil {
+			for _, digestRef := range repoDigests {
+				digestRef = strings.TrimSpace(digestRef)
+				if strings.Contains(digestRef, "@sha256:") {
+					return digestRef, nil
+				}
+			}
+		}
+	}
+
+	digestOut, digestErr := exec.Command(runtimeBin, "image", "inspect", taggedImage, "--format", "{{.Digest}}").Output()
+	if digestErr != nil {
+		return "", fmt.Errorf("inspect digest for %s: %w", taggedImage, digestErr)
+	}
+	digest := strings.TrimSpace(string(digestOut))
+	if !strings.HasPrefix(digest, "sha256:") {
+		return "", fmt.Errorf("inspect returned empty digest for %s", taggedImage)
+	}
+	base := strings.SplitN(taggedImage, "@", 2)[0]
+	return base + "@" + digest, nil
+}
+
+func tagPinnedImageRef(runtimeBin, source, target string) error {
+	cmd := exec.Command(runtimeBin, "image", "tag", source, target)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	return cmd.Run()
+}
+
+func readRuntimeImageRef(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read agent.claw: %w", err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "image:") {
+			value := strings.TrimSpace(strings.TrimPrefix(trimmed, "image:"))
+			if value == "" {
+				return "", errors.New("runtime.image is empty")
+			}
+			return value, nil
+		}
+	}
+	return "", errors.New("runtime.image not found")
+}
+
+func rewriteRuntimeImageRef(path, pinnedRef string) error {
+	if strings.TrimSpace(pinnedRef) == "" {
+		return errors.New("pinned runtime image is empty")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read agent.claw: %w", err)
+	}
+	lines := strings.Split(string(b), "\n")
+	replaced := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "image:") {
+			continue
+		}
+		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		lines[i] = indent + "image: " + pinnedRef
+		replaced = true
+		break
+	}
+	if !replaced {
+		return errors.New("runtime.image not found in agent.claw")
+	}
+	out := strings.Join(lines, "\n")
+	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+		return fmt.Errorf("write agent.claw: %w", err)
 	}
 	return nil
 }
