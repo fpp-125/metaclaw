@@ -1,0 +1,809 @@
+package cli
+
+import (
+	"bufio"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
+	"sort"
+	"strings"
+)
+
+type doctorCheck struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Detail string `json:"detail"`
+}
+
+type doctorReport struct {
+	SelectedRuntime string        `json:"selectedRuntime,omitempty"`
+	RuntimeBin      string        `json:"runtimeBin,omitempty"`
+	Checks          []doctorCheck `json:"checks"`
+}
+
+type doctorOptions struct {
+	Runtime       string
+	VaultPath     string
+	LLMKeyEnv     string
+	WebKeyEnv     string
+	RequireLLMKey bool
+	CheckJQ       bool
+	CheckPython   bool
+	RequireVault  bool
+}
+
+type quickstartOptions struct {
+	ProjectDir  string
+	VaultPath   string
+	Runtime     string
+	LLMKeyEnv   string
+	WebKeyEnv   string
+	Profile     string
+	TemplateDir string
+	SkipBuild   bool
+	NoRun       bool
+	Force       bool
+}
+
+type obsidianProfile struct {
+	Name           string
+	NetworkMode    string
+	RenderMode     string
+	RetrievalScope string
+	WriteConfirm   string
+	SaveDefaultDir string
+}
+
+const (
+	doctorStatusPass = "pass"
+	doctorStatusWarn = "warn"
+	doctorStatusFail = "fail"
+)
+
+var obsidianProfiles = map[string]obsidianProfile{
+	"obsidian-chat": {
+		Name:           "obsidian-chat",
+		NetworkMode:    "none",
+		RenderMode:     "glow",
+		RetrievalScope: "limited",
+		WriteConfirm:   "enter_once",
+		SaveDefaultDir: "Research/Market-Reports",
+	},
+	"obsidian-research": {
+		Name:           "obsidian-research",
+		NetworkMode:    "outbound",
+		RenderMode:     "glow",
+		RetrievalScope: "all",
+		WriteConfirm:   "diff_yes",
+		SaveDefaultDir: "Research/Market-Reports",
+	},
+}
+
+func runDoctor(args []string) int {
+	args = reorderFlags(args, map[string]bool{
+		"--runtime":         true,
+		"--vault":           true,
+		"--llm-key-env":     true,
+		"--web-key-env":     true,
+		"--require-llm-key": false,
+		"--json":            false,
+	})
+
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	opts := doctorOptions{
+		Runtime:     "auto",
+		LLMKeyEnv:   "GEMINI_API_KEY",
+		WebKeyEnv:   "TAVILY_API_KEY",
+		CheckJQ:     true,
+		CheckPython: true,
+	}
+	var asJSON bool
+	fs.StringVar(&opts.Runtime, "runtime", opts.Runtime, "runtime target (auto|apple_container|podman|docker)")
+	fs.StringVar(&opts.VaultPath, "vault", "", "vault path to validate")
+	fs.StringVar(&opts.LLMKeyEnv, "llm-key-env", opts.LLMKeyEnv, "LLM API key env name")
+	fs.StringVar(&opts.WebKeyEnv, "web-key-env", opts.WebKeyEnv, "web search API key env name")
+	fs.BoolVar(&opts.RequireLLMKey, "require-llm-key", false, "treat missing llm key env as failure")
+	fs.BoolVar(&asJSON, "json", false, "json output")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if len(fs.Args()) != 0 {
+		fmt.Fprintln(os.Stderr, "usage: metaclaw doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=GEMINI_API_KEY] [--web-key-env=TAVILY_API_KEY] [--require-llm-key] [--json]")
+		return 1
+	}
+
+	report, err := collectDoctorReport(opts)
+	if asJSON {
+		b, _ := json.MarshalIndent(report, "", "  ")
+		fmt.Println(string(b))
+	} else {
+		printDoctorReport(report)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "doctor failed: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func runQuickstart(args []string) int {
+	args = reorderFlags(args, map[string]bool{
+		"--project-dir":  true,
+		"--vault":        true,
+		"--runtime":      true,
+		"--llm-key-env":  true,
+		"--web-key-env":  true,
+		"--profile":      true,
+		"--template-dir": true,
+		"--skip-build":   false,
+		"--no-run":       false,
+		"--force":        false,
+	})
+
+	fs := flag.NewFlagSet("quickstart", flag.ContinueOnError)
+	opts := quickstartOptions{
+		ProjectDir: "./metaclaw-obsidian-bot",
+		Runtime:    "auto",
+		LLMKeyEnv:  "GEMINI_API_KEY",
+		WebKeyEnv:  "TAVILY_API_KEY",
+		Profile:    "obsidian-chat",
+	}
+	fs.StringVar(&opts.ProjectDir, "project-dir", opts.ProjectDir, "project directory")
+	fs.StringVar(&opts.VaultPath, "vault", "", "absolute vault path (interactive prompt if omitted)")
+	fs.StringVar(&opts.Runtime, "runtime", opts.Runtime, "runtime target (auto|apple_container|podman|docker)")
+	fs.StringVar(&opts.LLMKeyEnv, "llm-key-env", opts.LLMKeyEnv, "LLM API key env name")
+	fs.StringVar(&opts.WebKeyEnv, "web-key-env", opts.WebKeyEnv, "web search API key env name")
+	fs.StringVar(&opts.Profile, "profile", opts.Profile, "quickstart profile (obsidian-chat|obsidian-research)")
+	fs.StringVar(&opts.TemplateDir, "template-dir", "", "optional local path to obsidian bot template directory")
+	fs.BoolVar(&opts.SkipBuild, "skip-build", false, "skip image build")
+	fs.BoolVar(&opts.NoRun, "no-run", false, "prepare project only, do not launch chat")
+	fs.BoolVar(&opts.Force, "force", false, "allow using a non-empty project directory")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	remaining := fs.Args()
+	if len(remaining) != 1 || remaining[0] != "obsidian" {
+		fmt.Fprintln(os.Stderr, "usage: metaclaw quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat] [--skip-build] [--no-run]")
+		return 1
+	}
+
+	profile, ok := resolveObsidianProfile(opts.Profile)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "quickstart failed: unsupported profile %q\n", opts.Profile)
+		return 1
+	}
+
+	if !wizardEnvNameRef.MatchString(strings.TrimSpace(opts.LLMKeyEnv)) {
+		fmt.Fprintf(os.Stderr, "quickstart failed: --llm-key-env must be a valid environment variable name\n")
+		return 1
+	}
+	if !wizardEnvNameRef.MatchString(strings.TrimSpace(opts.WebKeyEnv)) {
+		fmt.Fprintf(os.Stderr, "quickstart failed: --web-key-env must be a valid environment variable name\n")
+		return 1
+	}
+
+	var err error
+	opts.ProjectDir, err = filepath.Abs(strings.TrimSpace(opts.ProjectDir))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: resolve project dir: %v\n", err)
+		return 1
+	}
+	if strings.TrimSpace(opts.VaultPath) == "" {
+		opts.VaultPath, err = promptQuickstartVaultPath()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
+			return 1
+		}
+	}
+	opts.VaultPath, err = filepath.Abs(strings.TrimSpace(opts.VaultPath))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: resolve vault path: %v\n", err)
+		return 1
+	}
+
+	hostDataDir := filepath.Join(opts.ProjectDir, ".metaclaw")
+	stateDir := filepath.Join(hostDataDir, "state")
+
+	report, err := collectDoctorReport(doctorOptions{
+		Runtime:       opts.Runtime,
+		VaultPath:     opts.VaultPath,
+		LLMKeyEnv:     opts.LLMKeyEnv,
+		WebKeyEnv:     opts.WebKeyEnv,
+		RequireLLMKey: false,
+		CheckJQ:       !opts.SkipBuild,
+		CheckPython:   !opts.NoRun,
+		RequireVault:  true,
+	})
+	printDoctorReport(report)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
+		return 1
+	}
+
+	templateDir, err := resolveObsidianTemplateDir(opts.TemplateDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
+		return 1
+	}
+
+	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, profile, opts.Force); err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
+		return 1
+	}
+
+	fmt.Printf("quickstart ready: %s\n", opts.ProjectDir)
+	fmt.Printf("vault: %s\n", opts.VaultPath)
+	fmt.Printf("host data: %s\n", hostDataDir)
+	fmt.Printf("profile: %s\n", profile.Name)
+	fmt.Printf("runtime: %s\n", report.SelectedRuntime)
+
+	if !opts.SkipBuild {
+		fmt.Println("building bot image...")
+		if err := runScript(filepath.Join(opts.ProjectDir, "build_image.sh"), opts.ProjectDir, map[string]string{
+			"RUNTIME_BIN": report.RuntimeBin,
+		}, false); err != nil {
+			fmt.Fprintf(os.Stderr, "quickstart failed: build_image.sh: %v\n", err)
+			return 1
+		}
+	}
+
+	if opts.NoRun {
+		fmt.Println("project prepared. launch chat when ready:")
+		fmt.Printf("  cd %s\n", opts.ProjectDir)
+		fmt.Printf("  export %s=...\n", opts.LLMKeyEnv)
+		fmt.Printf("  ./chat.sh\n")
+		return 0
+	}
+
+	exePath := "metaclaw"
+	if exe, err := os.Executable(); err == nil {
+		exePath = exe
+	}
+	fmt.Println("launching chat...")
+	if err := runScript(filepath.Join(opts.ProjectDir, "chat.sh"), opts.ProjectDir, map[string]string{
+		"METACLAW_BIN":      exePath,
+		"RUNTIME_TARGET":    report.SelectedRuntime,
+		"LLM_KEY_ENV":       opts.LLMKeyEnv,
+		"TAVILY_KEY_ENV":    opts.WebKeyEnv,
+		"BOT_HOST_DATA_DIR": hostDataDir,
+		"BOT_STATE_DIR":     stateDir,
+	}, true); err != nil {
+		fmt.Fprintf(os.Stderr, "quickstart failed: chat.sh: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func collectDoctorReport(opts doctorOptions) (doctorReport, error) {
+	report := doctorReport{Checks: make([]doctorCheck, 0, 8)}
+	add := func(name, status, detail string) {
+		report.Checks = append(report.Checks, doctorCheck{Name: name, Status: status, Detail: detail})
+	}
+
+	runtimeTarget, runtimeBin, err := resolveRequestedRuntime(opts.Runtime)
+	if err != nil {
+		add("runtime", doctorStatusFail, err.Error())
+	} else {
+		report.SelectedRuntime = runtimeTarget
+		report.RuntimeBin = runtimeBin
+		add("runtime", doctorStatusPass, fmt.Sprintf("%s (%s)", runtimeTarget, runtimeBin))
+	}
+
+	if strings.TrimSpace(opts.VaultPath) != "" {
+		if st, err := os.Stat(opts.VaultPath); err != nil {
+			status := doctorStatusWarn
+			if opts.RequireVault {
+				status = doctorStatusFail
+			}
+			add("vault", status, fmt.Sprintf("not accessible: %v", err))
+		} else if !st.IsDir() {
+			status := doctorStatusWarn
+			if opts.RequireVault {
+				status = doctorStatusFail
+			}
+			add("vault", status, "path exists but is not a directory")
+		} else {
+			add("vault", doctorStatusPass, opts.VaultPath)
+		}
+	}
+
+	llmEnv := strings.TrimSpace(opts.LLMKeyEnv)
+	if llmEnv == "" {
+		llmEnv = "GEMINI_API_KEY"
+	}
+	if strings.TrimSpace(os.Getenv(llmEnv)) == "" {
+		status := doctorStatusWarn
+		if opts.RequireLLMKey {
+			status = doctorStatusFail
+		}
+		add("llm_key", status, fmt.Sprintf("%s not set", llmEnv))
+	} else {
+		add("llm_key", doctorStatusPass, fmt.Sprintf("%s is set", llmEnv))
+	}
+
+	webEnv := strings.TrimSpace(opts.WebKeyEnv)
+	if webEnv == "" {
+		webEnv = "TAVILY_API_KEY"
+	}
+	if strings.TrimSpace(os.Getenv(webEnv)) == "" {
+		add("web_key", doctorStatusWarn, fmt.Sprintf("%s not set (optional)", webEnv))
+	} else {
+		add("web_key", doctorStatusPass, fmt.Sprintf("%s is set", webEnv))
+	}
+
+	if opts.CheckJQ {
+		if commandExists("jq") {
+			add("jq", doctorStatusPass, "available")
+		} else {
+			add("jq", doctorStatusFail, "jq not found (required by build_image.sh)")
+		}
+	}
+	if opts.CheckPython {
+		if commandExists("python3") {
+			add("python3", doctorStatusPass, "available")
+		} else {
+			add("python3", doctorStatusFail, "python3 not found (required by chat.sh)")
+		}
+	}
+
+	failed := make([]string, 0, 4)
+	for _, c := range report.Checks {
+		if c.Status == doctorStatusFail {
+			failed = append(failed, c.Name)
+		}
+	}
+	if len(failed) > 0 {
+		sort.Strings(failed)
+		return report, fmt.Errorf("failing checks: %s", strings.Join(failed, ", "))
+	}
+	return report, nil
+}
+
+func printDoctorReport(report doctorReport) {
+	fmt.Println("doctor:")
+	for _, c := range report.Checks {
+		prefix := "OK"
+		switch c.Status {
+		case doctorStatusWarn:
+			prefix = "WARN"
+		case doctorStatusFail:
+			prefix = "FAIL"
+		}
+		fmt.Printf("  [%s] %s: %s\n", prefix, c.Name, c.Detail)
+	}
+	if report.SelectedRuntime != "" {
+		fmt.Printf("selected runtime: %s\n", report.SelectedRuntime)
+	}
+}
+
+func resolveRequestedRuntime(requested string) (string, string, error) {
+	rt := strings.TrimSpace(requested)
+	if rt == "" {
+		rt = "auto"
+	}
+	if rt == "auto" {
+		for _, candidate := range runtimeProbeOrder() {
+			bin := runtimeBinaryForTarget(candidate)
+			if commandExists(bin) {
+				return candidate, bin, nil
+			}
+		}
+		return "", "", errors.New("no supported runtime found (install apple container, podman, or docker)")
+	}
+	bin := runtimeBinaryForTarget(rt)
+	if bin == "" {
+		return "", "", fmt.Errorf("invalid runtime %q", rt)
+	}
+	if !commandExists(bin) {
+		return "", "", fmt.Errorf("runtime %s is not available (missing binary: %s)", rt, bin)
+	}
+	return rt, bin, nil
+}
+
+func runtimeProbeOrder() []string {
+	if goruntime.GOOS == "darwin" {
+		return []string{"apple_container", "docker", "podman"}
+	}
+	return []string{"podman", "docker", "apple_container"}
+}
+
+func runtimeBinaryForTarget(target string) string {
+	switch target {
+	case "apple_container":
+		return "container"
+	case "podman":
+		return "podman"
+	case "docker":
+		return "docker"
+	default:
+		return ""
+	}
+}
+
+func resolveObsidianProfile(name string) (obsidianProfile, bool) {
+	n := strings.TrimSpace(strings.ToLower(name))
+	if n == "" {
+		n = "obsidian-chat"
+	}
+	p, ok := obsidianProfiles[n]
+	return p, ok
+}
+
+func promptQuickstartVaultPath() (string, error) {
+	if !isInteractiveTerminal() {
+		return "", errors.New("--vault is required in non-interactive mode")
+	}
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("Obsidian vault path: ")
+		line, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", err
+		}
+		value := strings.TrimSpace(line)
+		if value != "" {
+			return value, nil
+		}
+		if errors.Is(err, io.EOF) {
+			return "", errors.New("input closed before vault path was provided")
+		}
+		fmt.Println("vault path is required")
+	}
+}
+
+func isInteractiveTerminal() bool {
+	st, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (st.Mode() & os.ModeCharDevice) != 0
+}
+
+func resolveObsidianTemplateDir(explicit string) (string, error) {
+	explicit = strings.TrimSpace(explicit)
+	if explicit != "" {
+		abs, err := filepath.Abs(explicit)
+		if err != nil {
+			return "", fmt.Errorf("resolve --template-dir: %w", err)
+		}
+		if ok, err := hasObsidianTemplate(abs); err != nil {
+			return "", err
+		} else if !ok {
+			return "", fmt.Errorf("template dir does not look like obsidian-terminal-bot-advanced: %s", abs)
+		}
+		return abs, nil
+	}
+
+	candidates := make([]string, 0, 8)
+	if envDir := strings.TrimSpace(os.Getenv("METACLAW_EXAMPLES_DIR")); envDir != "" {
+		candidates = append(candidates,
+			filepath.Join(envDir, "examples", "obsidian-terminal-bot-advanced"),
+			envDir,
+		)
+	}
+	if wd, err := os.Getwd(); err == nil {
+		candidates = append(candidates,
+			filepath.Join(wd, "metaclaw-examples", "examples", "obsidian-terminal-bot-advanced"),
+			filepath.Join(wd, "..", "metaclaw-examples", "examples", "obsidian-terminal-bot-advanced"),
+		)
+	}
+	if exe, err := os.Executable(); err == nil {
+		d := filepath.Dir(exe)
+		candidates = append(candidates,
+			filepath.Join(d, "..", "metaclaw-examples", "examples", "obsidian-terminal-bot-advanced"),
+			filepath.Join(d, "..", "..", "metaclaw-examples", "examples", "obsidian-terminal-bot-advanced"),
+		)
+	}
+
+	for _, c := range candidates {
+		abs, err := filepath.Abs(c)
+		if err != nil {
+			continue
+		}
+		ok, err := hasObsidianTemplate(abs)
+		if err == nil && ok {
+			return abs, nil
+		}
+	}
+
+	if commandExists("git") {
+		cached, err := ensureCachedExamplesTemplate()
+		if err == nil {
+			return cached, nil
+		}
+	}
+
+	return "", errors.New("cannot find obsidian template; install git for auto-fetch or pass --template-dir")
+}
+
+func hasObsidianTemplate(dir string) (bool, error) {
+	required := []string{"agent.claw", "chat.sh", "chat_tui.py", "build_image.sh", "image/Dockerfile", "bot/chat_once.py"}
+	for _, rel := range required {
+		path := filepath.Join(dir, rel)
+		if _, err := os.Stat(path); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return false, nil
+			}
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func ensureCachedExamplesTemplate() (string, error) {
+	cacheRoot := filepath.Join(os.TempDir(), "metaclaw-quickstart-cache")
+	repoDir := filepath.Join(cacheRoot, "metaclaw-examples")
+	templateDir := filepath.Join(repoDir, "examples", "obsidian-terminal-bot-advanced")
+
+	if ok, err := hasObsidianTemplate(templateDir); err == nil && ok {
+		return templateDir, nil
+	}
+	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
+		return "", fmt.Errorf("create cache dir: %w", err)
+	}
+
+	if _, err := os.Stat(repoDir); err == nil {
+		_ = runGit(repoDir, "pull", "--ff-only")
+		if ok, err := hasObsidianTemplate(templateDir); err == nil && ok {
+			return templateDir, nil
+		}
+	}
+
+	if err := runGit(cacheRoot, "clone", "--depth", "1", "https://github.com/fpp-125/metaclaw-examples.git", repoDir); err != nil {
+		return "", err
+	}
+	if ok, err := hasObsidianTemplate(templateDir); err != nil {
+		return "", err
+	} else if !ok {
+		return "", errors.New("cached metaclaw-examples missing obsidian template")
+	}
+	return templateDir, nil
+}
+
+func runGit(dir string, args ...string) error {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	return cmd.Run()
+}
+
+func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, llmKeyEnv, webKeyEnv string, profile obsidianProfile, force bool) error {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		return fmt.Errorf("create project dir: %w", err)
+	}
+	if !force {
+		entries, err := os.ReadDir(projectDir)
+		if err != nil {
+			return fmt.Errorf("read project dir: %w", err)
+		}
+		if len(entries) > 0 {
+			return fmt.Errorf("project dir is not empty: %s (use --force to continue)", projectDir)
+		}
+	}
+
+	for _, rel := range []string{"agent.claw", "build_image.sh", "chat.sh", "chat_tui.py", "README.md", "bot", "image"} {
+		src := filepath.Join(templateDir, rel)
+		dst := filepath.Join(projectDir, rel)
+		if err := copyTemplateEntry(src, dst); err != nil {
+			return fmt.Errorf("copy %s: %w", rel, err)
+		}
+	}
+
+	for _, dir := range []string{"config", "logs", "runtime", "workspace", "state"} {
+		if err := os.MkdirAll(filepath.Join(hostDataDir, dir), 0o755); err != nil {
+			return fmt.Errorf("create host data dir %s: %w", dir, err)
+		}
+	}
+
+	if err := rewriteObsidianAgentFile(filepath.Join(projectDir, "agent.claw"), vaultPath, hostDataDir, profile.NetworkMode); err != nil {
+		return err
+	}
+	if err := rewriteQuickstartChatScript(filepath.Join(projectDir, "chat.sh"), hostDataDir, llmKeyEnv, webKeyEnv, profile); err != nil {
+		return err
+	}
+	if err := writeObsidianProfileDefaults(filepath.Join(hostDataDir, "config", "ui.defaults.json"), profile); err != nil {
+		return err
+	}
+	if err := writeQuickstartEnvExample(filepath.Join(projectDir, ".env.example"), llmKeyEnv, webKeyEnv); err != nil {
+		return err
+	}
+	return nil
+}
+
+func copyTemplateEntry(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return copyTemplateFile(src, dst, info.Mode())
+	}
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		st, err := d.Info()
+		if err != nil {
+			return err
+		}
+		return copyTemplateFile(path, target, st.Mode())
+	})
+}
+
+func copyTemplateFile(src, dst string, mode fs.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode.Perm())
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return nil
+}
+
+func rewriteObsidianAgentFile(path, vaultPath, hostDataDir, networkMode string) error {
+	if networkMode != "none" && networkMode != "outbound" && networkMode != "all" {
+		return fmt.Errorf("invalid profile network mode: %s", networkMode)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read agent.claw: %w", err)
+	}
+	text := string(b)
+	text = strings.ReplaceAll(text, "/ABS/PATH/TO/OBSIDIAN_VAULT", vaultPath)
+	text = strings.ReplaceAll(text, "/ABS/PATH/TO/BOT_HOST_DATA", hostDataDir)
+	text = replaceFirstNetworkMode(text, networkMode)
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		return fmt.Errorf("write agent.claw: %w", err)
+	}
+	return nil
+}
+
+func replaceFirstNetworkMode(content, networkMode string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "mode:") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+			lines[i] = indent + "mode: " + networkMode
+			break
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv string, profile obsidianProfile) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read chat.sh: %w", err)
+	}
+	text := string(b)
+	text = strings.Replace(text, "${BOT_RENDER_MODE:-glow}", "${BOT_RENDER_MODE:-"+profile.RenderMode+"}", 1)
+	text = strings.Replace(text, "${BOT_NETWORK_MODE:-none}", "${BOT_NETWORK_MODE:-"+profile.NetworkMode+"}", 1)
+
+	injection := strings.Join([]string{
+		"export BOT_HOST_DATA_DIR=\"${BOT_HOST_DATA_DIR:-$PROJECT_DIR/.metaclaw}\"",
+		"export BOT_STATE_DIR=\"${BOT_STATE_DIR:-$BOT_HOST_DATA_DIR/state}\"",
+		"export LLM_KEY_ENV=\"${LLM_KEY_ENV:-" + llmKeyEnv + "}\"",
+		"export TAVILY_KEY_ENV=\"${TAVILY_KEY_ENV:-" + webKeyEnv + "}\"",
+	}, "\n")
+
+	if !strings.Contains(text, "BOT_HOST_DATA_DIR") {
+		marker := "PROJECT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\""
+		if strings.Contains(text, marker) {
+			text = strings.Replace(text, marker, marker+"\n"+injection, 1)
+		} else {
+			text = injection + "\n" + text
+		}
+	}
+
+	if hostDataDir != "" {
+		text = strings.ReplaceAll(text, "$PROJECT_DIR/.metaclaw", hostDataDir)
+	}
+
+	if err := os.WriteFile(path, []byte(text), 0o755); err != nil {
+		return fmt.Errorf("write chat.sh: %w", err)
+	}
+	return nil
+}
+
+func writeObsidianProfileDefaults(path string, profile obsidianProfile) error {
+	payload := map[string]string{
+		"network_mode":       profile.NetworkMode,
+		"render_mode":        profile.RenderMode,
+		"retrieval_scope":    profile.RetrievalScope,
+		"write_confirm_mode": profile.WriteConfirm,
+		"save_default_dir":   profile.SaveDefaultDir,
+	}
+	b, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal profile defaults: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create defaults dir: %w", err)
+	}
+	if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+		return fmt.Errorf("write profile defaults: %w", err)
+	}
+	return nil
+}
+
+func writeQuickstartEnvExample(path, llmKeyEnv, webKeyEnv string) error {
+	content := strings.Join([]string{
+		"# Runtime-only secrets (never commit actual values)",
+		llmKeyEnv + "=",
+		webKeyEnv + "=",
+		"",
+	}, "\n")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("write .env.example: %w", err)
+	}
+	return nil
+}
+
+func runScript(scriptPath, dir string, extraEnv map[string]string, interactive bool) error {
+	cmd := exec.Command(scriptPath)
+	cmd.Dir = dir
+	cmd.Env = mergedEnv(extraEnv)
+	if interactive {
+		cmd.Stdin = os.Stdin
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func mergedEnv(extra map[string]string) []string {
+	if len(extra) == 0 {
+		return os.Environ()
+	}
+	m := map[string]string{}
+	for _, item := range os.Environ() {
+		if i := strings.IndexByte(item, '='); i > 0 {
+			m[item[:i]] = item[i+1:]
+		}
+	}
+	for k, v := range extra {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		m[k] = v
+	}
+	out := make([]string, 0, len(m))
+	for k, v := range m {
+		out = append(out, k+"="+v)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func commandExists(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}

@@ -2,6 +2,19 @@
 
 For a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
 
+## 60-Second Start
+
+```bash
+# 1) Check runtime + keys + vault path
+metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT --llm-key-env=GEMINI_API_KEY
+
+# 2) Bootstrap, configure, build, and enter chat
+metaclaw quickstart obsidian \
+  --project-dir=./my-obsidian-bot \
+  --vault=/ABS/PATH/TO/OBSIDIAN_VAULT \
+  --profile=obsidian-chat
+```
+
 ## Positioning
 
 MetaClaw：让强大的 Agent 自动化同时具备安全性、可治理性与可复现性。
@@ -68,7 +81,7 @@ MetaClaw provides a daemonless Go CLI that:
 
 ## Quick Usage (Engine + Obsidian Bot)
 
-Use this flow if you want to run the advanced Obsidian terminal bot with the MetaClaw engine.
+Use this flow if you want full manual control over each step.
 
 ```bash
 # 0) Clone both repos
@@ -120,6 +133,10 @@ For complete bot-side docs, see:
 Most users only need this flow to get started:
 
 ```bash
+# Fastest end-to-end path
+metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT
+metaclaw quickstart obsidian --project-dir=./my-obsidian-bot --vault=/ABS/PATH/TO/OBSIDIAN_VAULT
+
 # Create an agent template
 metaclaw init
 

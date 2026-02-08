@@ -49,6 +49,10 @@ func Execute(args []string) int {
 		return runCapsule(args[1:])
 	case "wizard":
 		return runWizard(args[1:])
+	case "quickstart":
+		return runQuickstart(args[1:])
+	case "doctor":
+		return runDoctor(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -417,6 +421,8 @@ func printUsage() {
 commands:
   init
   wizard [--interactive] [--project-dir=./my-bot] [--out=obsidian-bot.claw] [--vault=./vault] [--provider=gemini_openai]
+  quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat]
+  doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=GEMINI_API_KEY] [--web-key-env=TAVILY_API_KEY]
   validate <file.claw>
   compile <file.claw> [-o dir]
   keygen [--private-key=.metaclaw/keys/release.ed25519.pem] [--public-key=.metaclaw/keys/release.ed25519.pub.pem] [--force]
