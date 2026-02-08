@@ -66,7 +66,7 @@ MetaClaw provides a daemonless Go CLI that:
 - Supports both one-shot ephemeral runs and long-running detached agent containers (`--detach`).
 - Stores lifecycle state in SQLite and logs events as JSONL.
 
-## Quick Usage (Engine + Advanced Bot)
+## Quick Usage (Engine + Obsidian Bot)
 
 Use this flow if you want to run the advanced Obsidian terminal bot with the MetaClaw engine.
 
