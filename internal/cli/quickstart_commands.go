@@ -720,9 +720,6 @@ func ensureCachedExamplesTemplate() (string, error) {
 	repoDir := filepath.Join(cacheRoot, "metaclaw-examples")
 	templateDir := filepath.Join(repoDir, "examples", "obsidian-terminal-bot-advanced")
 
-	if ok, err := hasObsidianTemplate(templateDir); err == nil && ok {
-		return templateDir, nil
-	}
 	if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
 		return "", fmt.Errorf("create cache dir: %w", err)
 	}
