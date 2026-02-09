@@ -381,10 +381,13 @@ func collectDoctorReport(opts doctorOptions) (doctorReport, error) {
 	}
 
 	if opts.CheckJQ {
+		needsJQ := runtimeTarget == "apple_container"
 		if commandExists("jq") {
 			add("jq", doctorStatusPass, "available")
+		} else if needsJQ {
+			add("jq", doctorStatusFail, "jq not found (required for apple_container image digest resolution)")
 		} else {
-			add("jq", doctorStatusFail, "jq not found (required by build_image.sh)")
+			add("jq", doctorStatusWarn, "jq not found (optional for docker/podman builds)")
 		}
 	}
 	if opts.CheckPython {
