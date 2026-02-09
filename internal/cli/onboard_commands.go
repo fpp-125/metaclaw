@@ -391,29 +391,34 @@ func promptSelect(w *os.File, label string, options []string, defaultValue strin
 	fmt.Fprint(w, "\x1b[?25l")
 	defer fmt.Fprint(w, "\x1b[?25h")
 
+	crlf := func() {
+		// In raw mode, the terminal won't translate '\n' to CRLF automatically.
+		fmt.Fprint(w, "\r\n")
+	}
+	printLine := func(s string) {
+		fmt.Fprint(w, "\r")
+		fmt.Fprint(w, s)
+		crlf()
+	}
+
+	lines := len(options) + 1
+
 	render := func() {
-		fmt.Fprintf(w, "%s (use ↑/↓, Enter):\n", label)
+		printLine(label + " (use ↑/↓, Enter):")
 		for i, opt := range options {
 			prefix := "  "
 			if i == selected {
 				prefix = "> "
 			}
-			fmt.Fprintf(w, "%s%s\n", prefix, opt)
+			printLine(prefix + opt)
 		}
 	}
+	clearMenu := func() {
+		// Cursor is currently after the menu; move up to the prompt and clear everything below it.
+		fmt.Fprintf(w, "\x1b[%dA\r\x1b[J", lines)
+	}
 	redraw := func() {
-		// Move cursor up to the prompt line, then clear and re-render prompt+options.
-		lines := len(options) + 1
-		for i := 0; i < lines; i++ {
-			fmt.Fprint(w, "\x1b[1A") // cursor up
-		}
-		for i := 0; i < lines; i++ {
-			fmt.Fprint(w, "\r\x1b[2K") // clear line
-			fmt.Fprint(w, "\n")
-		}
-		for i := 0; i < lines; i++ {
-			fmt.Fprint(w, "\x1b[1A")
-		}
+		clearMenu()
 		render()
 	}
 
@@ -433,18 +438,8 @@ func promptSelect(w *os.File, label string, options []string, defaultValue strin
 		switch b {
 		case '\r', '\n':
 			// Clear menu and print the chosen value on one line for transcript readability.
-			lines := len(options) + 1
-			for i := 0; i < lines; i++ {
-				fmt.Fprint(w, "\x1b[1A")
-			}
-			for i := 0; i < lines; i++ {
-				fmt.Fprint(w, "\r\x1b[2K")
-				fmt.Fprint(w, "\n")
-			}
-			for i := 0; i < lines; i++ {
-				fmt.Fprint(w, "\x1b[1A")
-			}
-			fmt.Fprintf(w, "%s: %s\n", label, options[selected])
+			clearMenu()
+			printLine(label + ": " + options[selected])
 			return options[selected], nil
 		case 0x1b:
 			// Escape or arrow key sequence.
