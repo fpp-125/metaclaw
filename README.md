@@ -28,11 +28,17 @@ export TAVILY_API_KEY=...   # optional (only needed for web search)
   --profile=obsidian-chat
 ```
 
-Prefer a step-by-step prompt flow (and optional `.env` setup)? Run:
+Prefer a step-by-step onboarding flow? Run:
 
 ```bash
 ./bin/metaclaw onboard obsidian
 ```
+
+The only directory values you type are:
+- your Obsidian vault path
+- a project directory (where the bot project and `.metaclaw` state live)
+
+Everything else is chosen with arrow keys, and keys are entered as hidden input (optionally saved into `<project>/.env`, gitignored).
 
 ## Positioning
 

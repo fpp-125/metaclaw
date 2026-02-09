@@ -125,6 +125,40 @@ func runOnboard(args []string) int {
 		return 1
 	}
 
+	// Safety/UX: keep bot project state outside the vault to avoid clutter and overlapping mount surprises.
+	if isSubpath(opts.ProjectDir, opts.VaultPath) {
+		msg := fmt.Sprintf("warning: project directory is inside your vault (%s). Recommended: keep them separate.", opts.VaultPath)
+		if modeInteractive {
+			fmt.Fprintln(os.Stderr, msg)
+			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", false)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "onboard failed: %v\n", err)
+				return 1
+			}
+			if !ok {
+				return 1
+			}
+		} else {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	}
+	if isSubpath(opts.VaultPath, opts.ProjectDir) && opts.VaultPath != opts.ProjectDir {
+		msg := fmt.Sprintf("warning: vault path is inside the project directory (%s). Recommended: keep them separate.", opts.ProjectDir)
+		if modeInteractive {
+			fmt.Fprintln(os.Stderr, msg)
+			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", true)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "onboard failed: %v\n", err)
+				return 1
+			}
+			if !ok {
+				return 1
+			}
+		} else {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+	}
+
 	// Ensure an LLM key exists (either already in env or entered interactively).
 	if strings.TrimSpace(os.Getenv(opts.LLMKeyEnv)) == "" {
 		if modeInteractive {
@@ -195,14 +229,23 @@ func runOnboard(args []string) int {
 	return 0
 }
 
+func isSubpath(child, parent string) bool {
+	child = filepath.Clean(strings.TrimSpace(child))
+	parent = filepath.Clean(strings.TrimSpace(parent))
+	if child == "" || parent == "" {
+		return false
+	}
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	rel = filepath.Clean(rel)
+	return rel == "." || (!strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && rel != "..")
+}
+
 func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error) {
 	reader := bufio.NewReader(os.Stdin)
-
-	project, err := promptLine(reader, os.Stderr, "Project directory", in.ProjectDir)
-	if err != nil {
-		return in, err
-	}
-	in.ProjectDir = project
+	var err error
 
 	vault := strings.TrimSpace(in.VaultPath)
 	if vault == "" {
@@ -213,27 +256,38 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	}
 	in.VaultPath = vault
 
-	runtimeHelp := "Runtime target (auto|apple_container|podman|docker)"
-	runtime, err := promptLine(reader, os.Stderr, runtimeHelp, in.Runtime)
+	// Suggest a project directory next to the vault so users usually only type one long path.
+	defaultProject := strings.TrimSpace(in.ProjectDir)
+	if defaultProject == "" || defaultProject == "./my-obsidian-bot" {
+		defaultProject = filepath.Join(filepath.Dir(vault), filepath.Base(vault)+"-metaclaw-bot")
+	}
+	project, err := promptLine(reader, os.Stderr, "Project directory (where the bot project + .metaclaw state live)", defaultProject)
+	if err != nil {
+		return in, err
+	}
+	in.ProjectDir = project
+
+	runtime, err := promptSelect(os.Stderr, "Runtime target", []string{"auto", "apple_container", "podman", "docker"}, in.Runtime)
 	if err != nil {
 		return in, err
 	}
 	in.Runtime = runtime
 
-	profileHelp := "Profile (obsidian-chat: offline default, limited scope | obsidian-research: outbound net, full scope)"
-	profile, err := promptLine(reader, os.Stderr, profileHelp, in.Profile)
+	profileOptions := []string{"obsidian-chat", "obsidian-research"}
+	profile, err := promptSelect(os.Stderr, "Profile", profileOptions, in.Profile)
 	if err != nil {
 		return in, err
 	}
 	in.Profile = profile
 
-	saveEnv, err := promptYesNo(reader, os.Stderr, "Save keys you enter today into <project>/.env (gitignored) so you don't need to export every time?", in.SaveEnv)
+	saveEnv, err := promptSelectBool(os.Stderr, "Save keys you enter today into <project>/.env (gitignored)?", in.SaveEnv)
 	if err != nil {
 		return in, err
 	}
 	in.SaveEnv = saveEnv
 
-	needWeb, err := promptYesNo(reader, os.Stderr, "Enable web search (optional, requires key)?", strings.TrimSpace(in.Profile) == "obsidian-research")
+	needWebDefault := strings.TrimSpace(in.Profile) == "obsidian-research"
+	needWeb, err := promptSelectBool(os.Stderr, "Enable web search (optional, requires key)?", needWebDefault)
 	if err != nil {
 		return in, err
 	}
@@ -248,7 +302,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 		}
 	}
 
-	launch, err := promptYesNo(reader, os.Stderr, "Launch chat now?", !in.NoRun)
+	launch, err := promptSelectBool(os.Stderr, "Launch chat now?", !in.NoRun)
 	if err != nil {
 		return in, err
 	}
@@ -293,30 +347,148 @@ func stripOuterQuotes(value string) string {
 	return value
 }
 
-func promptYesNo(r *bufio.Reader, w *os.File, label string, defaultYes bool) (bool, error) {
-	def := "y/N"
+func promptSelectBool(w *os.File, label string, defaultYes bool) (bool, error) {
+	defaultValue := "no"
 	if defaultYes {
-		def = "Y/n"
+		defaultValue = "yes"
+	}
+	v, err := promptSelect(w, label, []string{"yes", "no"}, defaultValue)
+	if err != nil {
+		return false, err
+	}
+	return v == "yes", nil
+}
+
+func promptSelect(w *os.File, label string, options []string, defaultValue string) (string, error) {
+	if !isInteractiveTerminal() || !term.IsTerminal(int(os.Stdin.Fd())) {
+		// Fall back to a plain line prompt when no TTY is available.
+		reader := bufio.NewReader(os.Stdin)
+		return promptLine(reader, w, label, defaultValue)
+	}
+	if len(options) == 0 {
+		return "", errors.New("no options available")
+	}
+
+	selected := 0
+	defaultValue = strings.TrimSpace(defaultValue)
+	if defaultValue != "" {
+		for i, opt := range options {
+			if strings.EqualFold(opt, defaultValue) {
+				selected = i
+				break
+			}
+		}
+	}
+
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(fd, oldState)
+
+	// Hide cursor while selecting.
+	fmt.Fprint(w, "\x1b[?25l")
+	defer fmt.Fprint(w, "\x1b[?25h")
+
+	render := func() {
+		fmt.Fprintf(w, "%s (use ↑/↓, Enter):\n", label)
+		for i, opt := range options {
+			prefix := "  "
+			if i == selected {
+				prefix = "> "
+			}
+			fmt.Fprintf(w, "%s%s\n", prefix, opt)
+		}
+	}
+	redraw := func() {
+		// Move cursor up to the prompt line, then clear and re-render prompt+options.
+		lines := len(options) + 1
+		for i := 0; i < lines; i++ {
+			fmt.Fprint(w, "\x1b[1A") // cursor up
+		}
+		for i := 0; i < lines; i++ {
+			fmt.Fprint(w, "\r\x1b[2K") // clear line
+			fmt.Fprint(w, "\n")
+		}
+		for i := 0; i < lines; i++ {
+			fmt.Fprint(w, "\x1b[1A")
+		}
+		render()
+	}
+
+	render()
+
+	readByte := func() (byte, error) {
+		var b [1]byte
+		_, err := os.Stdin.Read(b[:])
+		return b[0], err
 	}
 	for {
-		fmt.Fprintf(w, "%s [%s]: ", label, def)
-		line, err := r.ReadString('\n')
-		if err != nil && !errors.Is(err, io.EOF) {
-			return false, err
+		b, err := readByte()
+		if err != nil {
+			return "", err
 		}
-		v := strings.TrimSpace(strings.ToLower(line))
-		switch v {
-		case "":
-			return defaultYes, nil
-		case "y", "yes":
-			return true, nil
-		case "n", "no":
-			return false, nil
+
+		switch b {
+		case '\r', '\n':
+			// Clear menu and print the chosen value on one line for transcript readability.
+			lines := len(options) + 1
+			for i := 0; i < lines; i++ {
+				fmt.Fprint(w, "\x1b[1A")
+			}
+			for i := 0; i < lines; i++ {
+				fmt.Fprint(w, "\r\x1b[2K")
+				fmt.Fprint(w, "\n")
+			}
+			for i := 0; i < lines; i++ {
+				fmt.Fprint(w, "\x1b[1A")
+			}
+			fmt.Fprintf(w, "%s: %s\n", label, options[selected])
+			return options[selected], nil
+		case 0x1b:
+			// Escape or arrow key sequence.
+			b2, err := readByte()
+			if err != nil {
+				return "", err
+			}
+			if b2 != '[' {
+				return "", errors.New("selection cancelled")
+			}
+			b3, err := readByte()
+			if err != nil {
+				return "", err
+			}
+			switch b3 {
+			case 'A': // up
+				if selected == 0 {
+					selected = len(options) - 1
+				} else {
+					selected--
+				}
+				redraw()
+			case 'B': // down
+				selected = (selected + 1) % len(options)
+				redraw()
+			case 'C', 'D':
+				// ignore left/right
+			default:
+				// ignore other sequences
+			}
+		case 'k', 'K':
+			if selected == 0 {
+				selected = len(options) - 1
+			} else {
+				selected--
+			}
+			redraw()
+		case 'j', 'J':
+			selected = (selected + 1) % len(options)
+			redraw()
+		case 'q', 'Q':
+			return "", errors.New("selection cancelled")
 		default:
-			fmt.Fprintln(w, "please enter y or n")
-		}
-		if errors.Is(err, io.EOF) {
-			return false, errors.New("input closed before selection was provided")
+			// ignore
 		}
 	}
 }
