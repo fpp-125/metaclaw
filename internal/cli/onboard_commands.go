@@ -126,36 +126,13 @@ func runOnboard(args []string) int {
 	}
 
 	// Safety/UX: keep bot project state outside the vault to avoid clutter and overlapping mount surprises.
-	if isSubpath(opts.ProjectDir, opts.VaultPath) {
-		msg := fmt.Sprintf("warning: project directory is inside your vault (%s). Recommended: keep them separate.", opts.VaultPath)
-		if modeInteractive {
-			fmt.Fprintln(os.Stderr, msg)
-			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", false)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "onboard failed: %v\n", err)
-				return 1
-			}
-			if !ok {
-				return 1
-			}
-		} else {
-			fmt.Fprintln(os.Stderr, msg)
+	// Interactive flow handles this immediately after the project-dir prompt; we keep warnings here for non-interactive usage.
+	if !modeInteractive {
+		if isSubpath(opts.ProjectDir, opts.VaultPath) {
+			fmt.Fprintf(os.Stderr, "warning: project directory is inside your vault (%s). Recommended: keep them separate.\n", opts.VaultPath)
 		}
-	}
-	if isSubpath(opts.VaultPath, opts.ProjectDir) && opts.VaultPath != opts.ProjectDir {
-		msg := fmt.Sprintf("warning: vault path is inside the project directory (%s). Recommended: keep them separate.", opts.ProjectDir)
-		if modeInteractive {
-			fmt.Fprintln(os.Stderr, msg)
-			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", true)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "onboard failed: %v\n", err)
-				return 1
-			}
-			if !ok {
-				return 1
-			}
-		} else {
-			fmt.Fprintln(os.Stderr, msg)
+		if isSubpath(opts.VaultPath, opts.ProjectDir) && opts.VaultPath != opts.ProjectDir {
+			fmt.Fprintf(os.Stderr, "warning: vault path is inside the project directory (%s). Recommended: keep them separate.\n", opts.ProjectDir)
 		}
 	}
 
@@ -261,11 +238,41 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	if defaultProject == "" || defaultProject == "./my-obsidian-bot" {
 		defaultProject = filepath.Join(filepath.Dir(vault), filepath.Base(vault)+"-metaclaw-bot")
 	}
-	project, err := promptLine(reader, os.Stderr, "Project directory (where the bot project + .metaclaw state live)", defaultProject)
-	if err != nil {
-		return in, err
+	for {
+		project, err := promptLine(reader, os.Stderr, "Project directory (where the bot project + .metaclaw state live)", defaultProject)
+		if err != nil {
+			return in, err
+		}
+		in.ProjectDir = project
+
+		// Warn early (right after directory selection) so users don't proceed through multiple menus only to fail later.
+		vaultAbs, _ := filepath.Abs(strings.TrimSpace(vault))
+		projectAbs, _ := filepath.Abs(strings.TrimSpace(project))
+		if isSubpath(projectAbs, vaultAbs) {
+			fmt.Fprintf(os.Stderr, "warning: project directory is inside your vault (%s). Recommended: keep them separate.\n", vaultAbs)
+			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", false)
+			if err != nil {
+				return in, err
+			}
+			if !ok {
+				// Re-prompt project directory.
+				defaultProject = project
+				continue
+			}
+		}
+		if isSubpath(vaultAbs, projectAbs) && vaultAbs != projectAbs {
+			fmt.Fprintf(os.Stderr, "warning: vault path is inside the project directory (%s). Recommended: keep them separate.\n", projectAbs)
+			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", true)
+			if err != nil {
+				return in, err
+			}
+			if !ok {
+				defaultProject = project
+				continue
+			}
+		}
+		break
 	}
-	in.ProjectDir = project
 
 	runtime, err := promptSelect(os.Stderr, "Runtime target", []string{"auto", "apple_container", "podman", "docker"}, in.Runtime)
 	if err != nil {
