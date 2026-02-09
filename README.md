@@ -45,8 +45,8 @@ Prefer a step-by-step onboarding flow? Run:
 ./bin/metaclaw onboard obsidian
 ```
 
-You choose a working directory first (this becomes the bot project directory).
-Then you choose an Obsidian vault path (default is `<working-dir>/vault`, but you can point to an existing vault elsewhere).
+You choose a project directory first (this becomes the bot project directory).
+Then you choose an Obsidian vault path (default is `<project-dir>/vault`, but you can point to an existing vault elsewhere).
 
 Everything else is chosen with arrow keys, and keys are entered as hidden input (optionally saved into `<project>/.env`, gitignored).
 

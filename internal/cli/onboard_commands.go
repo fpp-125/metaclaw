@@ -134,9 +134,6 @@ func runOnboard(args []string) int {
 		if isSubpath(opts.ProjectDir, opts.VaultPath) {
 			fmt.Fprintf(os.Stderr, "warning: project directory is inside your vault (%s). Recommended: keep them separate.\n", opts.VaultPath)
 		}
-		if isSubpath(opts.VaultPath, opts.ProjectDir) && opts.VaultPath != opts.ProjectDir {
-			fmt.Fprintf(os.Stderr, "warning: vault path is inside the project directory (%s). Recommended: keep them separate.\n", opts.ProjectDir)
-		}
 	}
 
 	// Ensure an LLM key exists (either already in env or entered interactively).
@@ -230,21 +227,21 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	reader := bufio.NewReader(os.Stdin)
 	var err error
 
-	// Ask for a working directory first. This becomes the bot project directory.
-	// Then ask for an Obsidian vault path with a sensible default under the working directory,
+	// Ask for a project directory first. This becomes the bot project directory.
+	// Then ask for an Obsidian vault path with a sensible default under the project directory,
 	// while still allowing users to point at an existing vault elsewhere.
-	// Intentionally no default: users should explicitly choose where the working directory lives.
-	workDir, err := promptLine(reader, os.Stderr, "Working directory (contains both project + vault)", "")
+	// Intentionally no default: users should explicitly choose where the project directory lives.
+	workDir, err := promptLine(reader, os.Stderr, "Project directory", "")
 	if err != nil {
 		return in, err
 	}
 	workAbs, err := filepath.Abs(strings.TrimSpace(expandLeadingTilde(workDir)))
 	if err != nil {
-		return in, fmt.Errorf("resolve working directory: %w", err)
+		return in, fmt.Errorf("resolve project directory: %w", err)
 	}
 	in.ProjectDir = workAbs
 
-	// Vault path: default under working dir, but allow an absolute path elsewhere.
+	// Vault path: default under the project directory, but allow an absolute path elsewhere.
 	vaultDefault := strings.TrimSpace(in.VaultPath)
 	if vaultDefault == "" {
 		vaultDefault = filepath.Join(workAbs, "vault")
@@ -261,7 +258,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 			continue
 		}
 		if vaultAbs == workAbs {
-			fmt.Fprintln(os.Stderr, "vault path must be different from the working directory")
+			fmt.Fprintln(os.Stderr, "vault path must be different from the project directory")
 			continue
 		}
 
@@ -295,7 +292,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	// Optional warning: putting the project inside the vault can clutter notes and creates overlapping host paths.
 	// (The default flow keeps the vault under the project, which is fine.)
 	if isSubpath(workAbs, vaultAbs) && workAbs != vaultAbs {
-		fmt.Fprintf(os.Stderr, "warning: working directory is inside your vault (%s). Recommended: keep them separate.\n", vaultAbs)
+		fmt.Fprintf(os.Stderr, "warning: project directory is inside your vault (%s). Recommended: keep them separate.\n", vaultAbs)
 	}
 
 	vaultAccess, err := promptSelect(os.Stderr, "Vault access", []string{"read-only (recommended)", "read-write (less safe)"}, "read-only (recommended)")
@@ -351,7 +348,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 func resolvePathFromDir(baseAbs, userInput string) (string, error) {
 	baseAbs = filepath.Clean(strings.TrimSpace(baseAbs))
 	if baseAbs == "" {
-		return "", errors.New("missing working directory")
+		return "", errors.New("missing project directory")
 	}
 	value := stripOuterQuotes(strings.TrimSpace(userInput))
 	if value == "" {
@@ -482,7 +479,8 @@ func promptSelect(w *os.File, label string, options []string, defaultValue strin
 		fmt.Fprint(w, "\r\n")
 	}
 	printLine := func(s string) {
-		fmt.Fprint(w, "\r")
+		// Ensure we fully clear the line before printing (prevents odd "staircase" rendering on some terminals).
+		fmt.Fprint(w, "\r\x1b[2K")
 		fmt.Fprint(w, s)
 		crlf()
 	}

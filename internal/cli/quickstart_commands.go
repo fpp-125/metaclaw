@@ -792,8 +792,35 @@ func scaffoldObsidianProject(templateDir, projectDir, vaultPath string, vaultWri
 		if err != nil {
 			return fmt.Errorf("read project dir: %w", err)
 		}
-		if len(entries) > 0 {
-			return fmt.Errorf("project dir is not empty: %s (use --force to continue)", projectDir)
+		allowedTop := map[string]struct{}{
+			".DS_Store": {},
+		}
+
+		// UX: allow a vault directory to exist inside the project directory.
+		// This supports the onboarding default (<project>/vault) without requiring --force.
+		vaultAbs, vErr := filepath.Abs(strings.TrimSpace(vaultPath))
+		projAbs, pErr := filepath.Abs(strings.TrimSpace(projectDir))
+		if vErr == nil && pErr == nil && isSubpath(vaultAbs, projAbs) && vaultAbs != projAbs {
+			if rel, err := filepath.Rel(projAbs, vaultAbs); err == nil {
+				rel = filepath.Clean(rel)
+				first := strings.Split(rel, string(os.PathSeparator))[0]
+				if first != "" && first != "." && first != ".." {
+					allowedTop[first] = struct{}{}
+				}
+			}
+		}
+
+		var unexpected []string
+		for _, e := range entries {
+			name := e.Name()
+			if _, ok := allowedTop[name]; ok {
+				continue
+			}
+			unexpected = append(unexpected, name)
+		}
+		if len(unexpected) > 0 {
+			sort.Strings(unexpected)
+			return fmt.Errorf("project dir is not empty: %s (unexpected: %s; use --force to continue)", projectDir, strings.Join(unexpected, ", "))
 		}
 	}
 
