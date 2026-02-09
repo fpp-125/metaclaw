@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fpp-125/metaclaw/internal/project"
 )
 
 type doctorCheck struct {
@@ -247,6 +249,44 @@ func runQuickstart(args []string) int {
 	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, opts.VaultWrite, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, report.SelectedRuntime, profile, opts.Force); err != nil {
 		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
 		return 1
+	}
+
+	// Write a generic project lock so future upgrades can refresh managed template files in-place
+	// without overwriting user-owned data like agent.claw, vault content, or .env.
+	{
+		src := project.TemplateSource{
+			Kind: project.TemplateSourceKindGit,
+			Repo: "https://github.com/fpp-125/metaclaw-examples.git",
+			Ref:  "main",
+			Path: "examples/obsidian-terminal-bot-advanced",
+		}
+		// If user explicitly provided a template dir, treat it as a local template source.
+		if strings.TrimSpace(opts.TemplateDir) != "" {
+			src = project.TemplateSource{Kind: project.TemplateSourceKindLocal, Dir: templateDir}
+		}
+		manifest, err := project.LoadManifest(templateDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: cannot load template manifest (%s): %v\n", project.ManifestFilename, err)
+		} else {
+			managed, err := project.ManagedFiles(templateDir, manifest)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "warning: cannot compute managed files: %v\n", err)
+			} else if hashes, err := project.HashManagedFiles(opts.ProjectDir, managed); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: cannot hash managed files: %v\n", err)
+			} else {
+				lock := project.ProjectLock{
+					SchemaVersion:  1,
+					Template:       src,
+					TemplateID:     manifest.ID,
+					TemplateCommit: gitCommitForDir(templateDir),
+					InstalledAtUTC: time.Now().UTC().Format(time.RFC3339),
+					ManagedFiles:   hashes,
+				}
+				if err := project.WriteLock(hostDataDir, lock); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: cannot write project lock: %v\n", err)
+				}
+			}
+		}
 	}
 
 	fmt.Printf("quickstart ready: %s\n", opts.ProjectDir)
@@ -781,6 +821,44 @@ func syncGitRepoToMain(repoDir string) error {
 	}
 	_ = runGit(repoDir, "clean", "-fdx")
 	return nil
+}
+
+func gitCommitForDir(dir string) string {
+	if !commandExists("git") {
+		return ""
+	}
+	// Find the nearest parent containing .git.
+	repo := ""
+	cur := dir
+	for i := 0; i < 16; i++ {
+		if cur == "" || cur == string(filepath.Separator) {
+			break
+		}
+		if st, err := os.Stat(filepath.Join(cur, ".git")); err == nil && st.IsDir() {
+			repo = cur
+			break
+		}
+		next := filepath.Dir(cur)
+		if next == cur {
+			break
+		}
+		cur = next
+	}
+	if repo == "" {
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
+	cmd.Dir = repo
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.String())
 }
 
 func scaffoldObsidianProject(templateDir, projectDir, vaultPath string, vaultWrite bool, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile, force bool) error {

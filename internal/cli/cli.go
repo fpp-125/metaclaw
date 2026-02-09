@@ -55,6 +55,8 @@ func Execute(args []string) int {
 		return runOnboard(args[1:])
 	case "doctor":
 		return runDoctor(args[1:])
+	case "project":
+		return runProject(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -430,6 +432,8 @@ commands:
   quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat]
   onboard obsidian (interactive prompts)
   doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=OPENAI_FORMAT_API_KEY] [--web-key-env=TAVILY_API_KEY]
+  project init --project-dir=... (--template-dir=... | --template-repo=... --template-path=...) [--ref=main]
+  project upgrade [--project-dir=.] [--force] [--dry-run]
   validate <file.claw>
   compile <file.claw> [-o dir]
   keygen [--private-key=.metaclaw/keys/release.ed25519.pem] [--public-key=.metaclaw/keys/release.ed25519.pub.pem] [--force]
