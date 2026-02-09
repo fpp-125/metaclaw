@@ -28,15 +28,26 @@ export TAVILY_API_KEY=...   # optional (only needed for web search)
   --profile=obsidian-chat
 ```
 
+By default, the example mounts your vault read-only inside the container and writes back on the host via `/save`.
+If you want the container to write the vault directly (less safe), add `--vault-write`.
+
+```bash
+./bin/metaclaw quickstart obsidian \
+  --project-dir=./my-obsidian-bot \
+  --vault=/ABS/PATH/TO/OBSIDIAN_VAULT \
+  --profile=obsidian-chat \
+  --vault-write
+```
+
 Prefer a step-by-step onboarding flow? Run:
 
 ```bash
 ./bin/metaclaw onboard obsidian
 ```
 
-The only directory values you type are:
-- your Obsidian vault path
-- a project directory (where the bot project and `.metaclaw` state live)
+You choose a working directory first. Vault and project directories are then placed under it:
+- Vault directory (default `vault/`)
+- Project directory (default `bot/`)
 
 Everything else is chosen with arrow keys, and keys are entered as hidden input (optionally saved into `<project>/.env`, gitignored).
 

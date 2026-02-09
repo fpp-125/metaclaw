@@ -31,13 +31,14 @@ agent:
     mounts:
       - source: /ABS/PATH/TO/OBSIDIAN_VAULT
         target: /vault
+        readOnly: true
       - source: /ABS/PATH/TO/BOT_HOST_DATA/runtime
         target: /runtime
 `
 	if err := os.WriteFile(agent, []byte(content), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	if err := rewriteObsidianAgentFile(agent, "/vault/path", "/bot/data", "outbound"); err != nil {
+	if err := rewriteObsidianAgentFile(agent, "/vault/path", "/bot/data", "outbound", false); err != nil {
 		t.Fatalf("rewrite agent: %v", err)
 	}
 	b, err := os.ReadFile(agent)
@@ -53,6 +54,25 @@ agent:
 	}
 	if !strings.Contains(text, "mode: outbound") {
 		t.Fatalf("network mode not replaced: %s", text)
+	}
+	if !strings.Contains(text, "readOnly: true") {
+		t.Fatalf("expected vault mount readOnly true by default: %s", text)
+	}
+
+	// Less safe mode: allow container to write the vault.
+	if err := os.WriteFile(agent, []byte(content), 0o644); err != nil {
+		t.Fatalf("rewrite fixture: %v", err)
+	}
+	if err := rewriteObsidianAgentFile(agent, "/vault/path", "/bot/data", "outbound", true); err != nil {
+		t.Fatalf("rewrite agent (vault write): %v", err)
+	}
+	b, err = os.ReadFile(agent)
+	if err != nil {
+		t.Fatalf("read rewritten agent (vault write): %v", err)
+	}
+	text = string(b)
+	if !strings.Contains(text, "readOnly: false") {
+		t.Fatalf("expected vault mount readOnly false when vaultWrite enabled: %s", text)
 	}
 }
 

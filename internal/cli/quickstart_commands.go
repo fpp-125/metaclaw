@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,6 +46,7 @@ type doctorOptions struct {
 type quickstartOptions struct {
 	ProjectDir  string
 	VaultPath   string
+	VaultWrite  bool
 	Runtime     string
 	LLMKeyEnv   string
 	WebKeyEnv   string
@@ -143,6 +145,7 @@ func runQuickstart(args []string) int {
 	args = reorderFlags(args, map[string]bool{
 		"--project-dir":  true,
 		"--vault":        true,
+		"--vault-write":  false,
 		"--runtime":      true,
 		"--llm-key-env":  true,
 		"--web-key-env":  true,
@@ -163,6 +166,7 @@ func runQuickstart(args []string) int {
 	}
 	fs.StringVar(&opts.ProjectDir, "project-dir", opts.ProjectDir, "project directory")
 	fs.StringVar(&opts.VaultPath, "vault", "", "absolute vault path (interactive prompt if omitted)")
+	fs.BoolVar(&opts.VaultWrite, "vault-write", false, "mount vault read-write inside container (less safe; default is read-only)")
 	fs.StringVar(&opts.Runtime, "runtime", opts.Runtime, "runtime target (auto|apple_container|podman|docker)")
 	fs.StringVar(&opts.LLMKeyEnv, "llm-key-env", opts.LLMKeyEnv, "LLM API key env name")
 	fs.StringVar(&opts.WebKeyEnv, "web-key-env", opts.WebKeyEnv, "web search API key env name")
@@ -177,7 +181,7 @@ func runQuickstart(args []string) int {
 
 	remaining := fs.Args()
 	if len(remaining) != 1 || remaining[0] != "obsidian" {
-		fmt.Fprintln(os.Stderr, "usage: metaclaw quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat] [--skip-build] [--no-run]")
+		fmt.Fprintln(os.Stderr, "usage: metaclaw quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--vault-write] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat] [--skip-build] [--no-run]")
 		return 1
 	}
 
@@ -240,13 +244,18 @@ func runQuickstart(args []string) int {
 		return 1
 	}
 
-	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, report.SelectedRuntime, profile, opts.Force); err != nil {
+	if err := scaffoldObsidianProject(templateDir, opts.ProjectDir, opts.VaultPath, opts.VaultWrite, hostDataDir, opts.LLMKeyEnv, opts.WebKeyEnv, report.SelectedRuntime, profile, opts.Force); err != nil {
 		fmt.Fprintf(os.Stderr, "quickstart failed: %v\n", err)
 		return 1
 	}
 
 	fmt.Printf("quickstart ready: %s\n", opts.ProjectDir)
 	fmt.Printf("vault: %s\n", opts.VaultPath)
+	if opts.VaultWrite {
+		fmt.Printf("vault access: read-write (less safe)\n")
+	} else {
+		fmt.Printf("vault access: read-only (recommended)\n")
+	}
 	fmt.Printf("host data: %s\n", hostDataDir)
 	fmt.Printf("profile: %s\n", profile.Name)
 	fmt.Printf("runtime: %s\n", report.SelectedRuntime)
@@ -774,7 +783,7 @@ func syncGitRepoToMain(repoDir string) error {
 	return nil
 }
 
-func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile, force bool) error {
+func scaffoldObsidianProject(templateDir, projectDir, vaultPath string, vaultWrite bool, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile, force bool) error {
 	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		return fmt.Errorf("create project dir: %w", err)
 	}
@@ -802,7 +811,7 @@ func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, ll
 		}
 	}
 
-	if err := rewriteObsidianAgentFile(filepath.Join(projectDir, "agent.claw"), vaultPath, hostDataDir, profile.NetworkMode); err != nil {
+	if err := rewriteObsidianAgentFile(filepath.Join(projectDir, "agent.claw"), vaultPath, hostDataDir, profile.NetworkMode, vaultWrite); err != nil {
 		return err
 	}
 	if err := rewriteQuickstartChatScript(filepath.Join(projectDir, "chat.sh"), hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget, profile); err != nil {
@@ -868,7 +877,7 @@ func copyTemplateFile(src, dst string, mode fs.FileMode) error {
 	return nil
 }
 
-func rewriteObsidianAgentFile(path, vaultPath, hostDataDir, networkMode string) error {
+func rewriteObsidianAgentFile(path, vaultPath, hostDataDir, networkMode string, vaultWrite bool) error {
 	if networkMode != "none" && networkMode != "outbound" && networkMode != "all" {
 		return fmt.Errorf("invalid profile network mode: %s", networkMode)
 	}
@@ -880,6 +889,7 @@ func rewriteObsidianAgentFile(path, vaultPath, hostDataDir, networkMode string) 
 	text = strings.ReplaceAll(text, "/ABS/PATH/TO/OBSIDIAN_VAULT", vaultPath)
 	text = strings.ReplaceAll(text, "/ABS/PATH/TO/BOT_HOST_DATA", hostDataDir)
 	text = replaceFirstNetworkMode(text, networkMode)
+	text = setMountReadOnlyByTarget(text, "/vault", !vaultWrite)
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		return fmt.Errorf("write agent.claw: %w", err)
 	}
@@ -897,6 +907,83 @@ func replaceFirstNetworkMode(content, networkMode string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func stripOuterQuotesScalar(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) >= 2 {
+		if (value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"') {
+			return strings.TrimSpace(value[1 : len(value)-1])
+		}
+	}
+	return value
+}
+
+func setMountReadOnlyByTarget(content, targetPath string, readOnly bool) string {
+	lines := strings.Split(content, "\n")
+
+	inMounts := false
+	mountsIndent := 0
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+
+		if trimmed == "mounts:" {
+			inMounts = true
+			mountsIndent = indent
+			continue
+		}
+		if inMounts && indent <= mountsIndent && trimmed != "" && !strings.HasPrefix(trimmed, "-") {
+			// Left mounts section.
+			inMounts = false
+		}
+		if !inMounts {
+			continue
+		}
+
+		if !strings.HasPrefix(trimmed, "target:") {
+			continue
+		}
+		val := strings.TrimSpace(strings.TrimPrefix(trimmed, "target:"))
+		val = stripOuterQuotesScalar(val)
+		if val != targetPath {
+			continue
+		}
+
+		roIndent := line[:indent]
+		desired := roIndent + "readOnly: " + strconv.FormatBool(readOnly)
+
+		// Look for an existing readOnly line in the same mount item.
+		found := false
+		insertAt := i + 1
+		for j := i + 1; j < len(lines); j++ {
+			jLine := lines[j]
+			jTrim := strings.TrimSpace(jLine)
+			jIndent := len(jLine) - len(strings.TrimLeft(jLine, " \t"))
+
+			// Next mount item or leaving mounts.
+			if jIndent <= mountsIndent+2 && strings.HasPrefix(jTrim, "-") {
+				break
+			}
+			if jIndent <= mountsIndent && jTrim != "" && !strings.HasPrefix(jTrim, "-") {
+				break
+			}
+
+			if strings.HasPrefix(jTrim, "readOnly:") {
+				lines[j] = desired
+				found = true
+				break
+			}
+		}
+		if !found {
+			lines = append(lines[:insertAt], append([]string{desired}, lines[insertAt:]...)...)
+		}
+
+		// Only update the first matching mount target.
+		return strings.Join(lines, "\n")
+	}
+	return content
 }
 
 func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile) error {
