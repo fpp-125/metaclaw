@@ -234,3 +234,92 @@ exec python3 "$PROJECT_DIR/chat_tui.py" "$@"
 		t.Fatalf("runtime target default not updated: %s", got)
 	}
 }
+
+func TestScaffoldObsidianProjectCopiesAgents(t *testing.T) {
+	templateDir := t.TempDir()
+	projectDir := filepath.Join(t.TempDir(), "proj")
+	hostDataDir := filepath.Join(projectDir, ".metaclaw")
+	vaultPath := filepath.Join(projectDir, "vault")
+	if err := os.MkdirAll(filepath.Join(templateDir, "bot"), 0o755); err != nil {
+		t.Fatalf("mkdir bot: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(templateDir, "image"), 0o755); err != nil {
+		t.Fatalf("mkdir image: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(templateDir, "agents"), 0o755); err != nil {
+		t.Fatalf("mkdir agents: %v", err)
+	}
+
+	agent := `apiVersion: metaclaw/v1
+kind: Agent
+agent:
+  habitat:
+    network:
+      mode: none
+    mounts:
+      - source: /ABS/PATH/TO/OBSIDIAN_VAULT
+        target: /vault
+        readOnly: true
+      - source: /ABS/PATH/TO/BOT_HOST_DATA/runtime
+        target: /runtime
+  llm:
+    provider: gemini_openai
+    model: gemini-3-flash-preview
+    baseURL: https://generativelanguage.googleapis.com/v1beta/openai/
+    apiKeyEnv: GEMINI_API_KEY
+  runtime:
+    image: metaclaw/obsidian-terminal-bot:local@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  command: ["python3", "/app/chat_once.py"]
+`
+	chatSh := `#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+export BOT_RENDER_MODE="${BOT_RENDER_MODE:-glow}"
+export BOT_NETWORK_MODE="${BOT_NETWORK_MODE:-none}"
+exec python3 "$PROJECT_DIR/chat_tui.py" "$@"
+`
+	files := map[string]string{
+		"agent.claw":            agent,
+		"chat.sh":               chatSh,
+		"chat_tui.py":           "# stub\n",
+		"build_image.sh":        "#!/usr/bin/env bash\necho stub\n",
+		"README.md":             "# stub\n",
+		"bot/chat_once.py":      "# stub\n",
+		"image/Dockerfile":      "FROM scratch\n",
+		"agents/AGENTS.md":      "# agents\n",
+		"agents/soul.md":        "# soul\n",
+	}
+	for rel, content := range files {
+		path := filepath.Join(templateDir, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", rel, err)
+		}
+		mode := os.FileMode(0o644)
+		if strings.HasSuffix(rel, ".sh") {
+			mode = 0o755
+		}
+		if err := os.WriteFile(path, []byte(content), mode); err != nil {
+			t.Fatalf("write %s: %v", rel, err)
+		}
+	}
+
+	profile, ok := resolveObsidianProfile("obsidian-chat")
+	if !ok {
+		t.Fatal("expected obsidian-chat profile")
+	}
+	if err := os.MkdirAll(vaultPath, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+
+	if err := scaffoldObsidianProject(templateDir, projectDir, vaultPath, false, hostDataDir, "OPENAI_FORMAT_API_KEY", "TAVILY_API_KEY", "apple_container", profile, false); err != nil {
+		t.Fatalf("scaffoldObsidianProject: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(projectDir, "agents", "AGENTS.md")); err != nil {
+		t.Fatalf("expected agents/AGENTS.md to be copied: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, "agents", "soul.md")); err != nil {
+		t.Fatalf("expected agents/soul.md to be copied: %v", err)
+	}
+}

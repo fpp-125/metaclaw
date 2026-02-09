@@ -756,7 +756,16 @@ func resolveObsidianTemplateDir(explicit string) (string, error) {
 }
 
 func hasObsidianTemplate(dir string) (bool, error) {
-	required := []string{"agent.claw", "chat.sh", "chat_tui.py", "build_image.sh", "image/Dockerfile", "bot/chat_once.py"}
+	required := []string{
+		"agent.claw",
+		"chat.sh",
+		"chat_tui.py",
+		"build_image.sh",
+		"image/Dockerfile",
+		"bot/chat_once.py",
+		"agents/AGENTS.md",
+		"agents/soul.md",
+	}
 	for _, rel := range required {
 		path := filepath.Join(dir, rel)
 		if _, err := os.Stat(path); err != nil {
@@ -902,7 +911,7 @@ func scaffoldObsidianProject(templateDir, projectDir, vaultPath string, vaultWri
 		}
 	}
 
-	for _, rel := range []string{"agent.claw", "build_image.sh", "chat.sh", "chat_tui.py", "README.md", "bot", "image"} {
+	for _, rel := range []string{"agent.claw", "build_image.sh", "chat.sh", "chat_tui.py", "README.md", "bot", "image", "agents"} {
 		src := filepath.Join(templateDir, rel)
 		dst := filepath.Join(projectDir, rel)
 		if err := copyTemplateEntry(src, dst); err != nil {
