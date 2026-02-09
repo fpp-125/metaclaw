@@ -30,6 +30,7 @@ const (
 const (
 	LLMProviderOpenAICompatible LLMProvider = "openai_compatible"
 	LLMProviderGeminiOpenAI     LLMProvider = "gemini_openai"
+	LLMProviderAnthropic        LLMProvider = "anthropic"
 )
 
 type Clawfile struct {
@@ -141,7 +142,7 @@ func (r RuntimeTarget) Valid() bool {
 
 func (p LLMProvider) Valid() bool {
 	switch p {
-	case "", LLMProviderOpenAICompatible, LLMProviderGeminiOpenAI:
+	case "", LLMProviderOpenAICompatible, LLMProviderGeminiOpenAI, LLMProviderAnthropic:
 		return true
 	default:
 		return false
@@ -168,7 +169,7 @@ func (c Clawfile) ValidateBasics() error {
 		return fmt.Errorf("agent.runtime.target must be one of podman,apple_container,docker")
 	}
 	if !c.Agent.LLM.Provider.Valid() {
-		return fmt.Errorf("agent.llm.provider must be one of openai_compatible,gemini_openai")
+		return fmt.Errorf("agent.llm.provider must be one of openai_compatible,gemini_openai,anthropic")
 	}
 	return nil
 }

@@ -49,6 +49,28 @@ func TestResolveMissingKey(t *testing.T) {
 	}
 }
 
+func TestResolveAnthropic(t *testing.T) {
+	spec := v1.LLMSpec{
+		Provider:  v1.LLMProviderAnthropic,
+		Model:     "claude-3-5-sonnet-latest",
+		BaseURL:   "https://api.anthropic.com/v1",
+		APIKeyEnv: "ANTHROPIC_API_KEY",
+	}
+	res, err := Resolve(spec, RuntimeOptions{APIKey: "abc-123"})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if !res.Enabled {
+		t.Fatal("expected enabled resolver")
+	}
+	if res.Env["ANTHROPIC_API_KEY"] != "abc-123" {
+		t.Fatalf("expected ANTHROPIC_API_KEY to be populated")
+	}
+	if res.Env["ANTHROPIC_BASE_URL"] != spec.BaseURL {
+		t.Fatalf("expected ANTHROPIC_BASE_URL mirror, got %q", res.Env["ANTHROPIC_BASE_URL"])
+	}
+}
+
 func TestAllowedEnvKeys(t *testing.T) {
 	spec := v1.LLMSpec{
 		Provider:  v1.LLMProviderGeminiOpenAI,

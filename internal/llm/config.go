@@ -53,6 +53,12 @@ func Resolve(spec v1.LLMSpec, opts RuntimeOptions) (Resolved, error) {
 		if spec.BaseURL != "" {
 			env["OPENAI_BASE_URL"] = spec.BaseURL
 		}
+	case v1.LLMProviderAnthropic:
+		// Some bots talk to Anthropic directly (not OpenAI-compatible).
+		env["ANTHROPIC_API_KEY"] = key
+		if spec.BaseURL != "" {
+			env["ANTHROPIC_BASE_URL"] = spec.BaseURL
+		}
 	}
 	if spec.Provider == v1.LLMProviderGeminiOpenAI {
 		env["GEMINI_API_KEY"] = key
@@ -78,6 +84,11 @@ func AllowedEnvKeys(spec v1.LLMSpec) []string {
 		keySet["OPENAI_API_KEY"] = struct{}{}
 		if spec.BaseURL != "" {
 			keySet["OPENAI_BASE_URL"] = struct{}{}
+		}
+	case v1.LLMProviderAnthropic:
+		keySet["ANTHROPIC_API_KEY"] = struct{}{}
+		if spec.BaseURL != "" {
+			keySet["ANTHROPIC_BASE_URL"] = struct{}{}
 		}
 	}
 	if spec.Provider == v1.LLMProviderGeminiOpenAI {
