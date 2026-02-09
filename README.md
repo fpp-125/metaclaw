@@ -19,11 +19,11 @@ metaclaw quickstart obsidian \
 
 让强大的 Agent 自动化同时具备安全性、可治理性与可复现性。
 
-Make powerful agents operationally safe, governable, and reproducible.
-
 从 LLM，到代理应用（如 Manus），再到以 OpenClaw 为代表的“全托管式 Agent 执行”，行业正在从“概率生成与推理能力”走向“可直接执行任务的自动化系统”。能力边界显著扩张的同时，也引入了新的系统性成本：安全边界更难收敛、运行与治理复杂度上升、平台工程容易走向过重。MetaClaw 的定位，就是在“能力”与“可控性”之间提供一条更稳健的中线方案。
 
 MetaClaw 不追求成为更大的黑盒 Agent 平台，而是提供一套本地优先、可审计、可约束的 Agent 基础设施：以 daemonless CLI 负责编排，以隔离 runtime 负责执行，以策略与锁机制保障复现与治理。结果是，自动化不只是“能跑”，而是“可控、可查、可持续演进”。
+
+Make powerful agents operationally safe, governable, and reproducible.
 
 From LLMs, to agent apps (such as Manus), and further to fully managed agent execution models represented by OpenClaw, the industry has shifted from probabilistic generation and reasoning toward directly executable automation. As capabilities expand, systemic costs rise as well: security boundaries become harder to enforce, operations and governance get more complex, and platform engineering tends to become overly heavy. MetaClaw is designed as a pragmatic middle path between capability and control.
 
