@@ -132,7 +132,13 @@ func copyTemplateDir(srcDir, dstDir string) (int, error) {
 			if d.Name() == ".git" {
 				return filepath.SkipDir
 			}
+			if d.Name() == "__pycache__" {
+				return filepath.SkipDir
+			}
 			return os.MkdirAll(filepath.Join(dstDir, filepath.FromSlash(rel)), 0o755)
+		}
+		if strings.HasSuffix(d.Name(), ".pyc") {
+			return nil
 		}
 		if rel == ManifestFilename {
 			// The project lock stores this metadata; keeping the manifest out avoids confusion.

@@ -260,6 +260,12 @@ func expandManagedFiles(templateDir string, managedPatterns, userPatterns []stri
 			if name == ".git" {
 				return filepath.SkipDir
 			}
+			if name == "__pycache__" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), ".pyc") {
 			return nil
 		}
 		rel, err := filepath.Rel(templateDir, p)

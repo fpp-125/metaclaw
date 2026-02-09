@@ -940,6 +940,9 @@ func copyTemplateEntry(src, dst string) error {
 		return err
 	}
 	if !info.IsDir() {
+		if strings.HasSuffix(filepath.Base(src), ".pyc") {
+			return nil
+		}
 		return copyTemplateFile(src, dst, info.Mode())
 	}
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, walkErr error) error {
@@ -952,7 +955,13 @@ func copyTemplateEntry(src, dst string) error {
 		}
 		target := filepath.Join(dst, rel)
 		if d.IsDir() {
+			if d.Name() == "__pycache__" {
+				return filepath.SkipDir
+			}
 			return os.MkdirAll(target, 0o755)
+		}
+		if strings.HasSuffix(d.Name(), ".pyc") {
+			return nil
 		}
 		st, err := d.Info()
 		if err != nil {
