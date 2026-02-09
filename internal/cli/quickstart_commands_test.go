@@ -126,7 +126,7 @@ func TestWriteObsidianProfileDefaults(t *testing.T) {
 }
 
 func TestResolveRequestedRuntimeRejectsInvalid(t *testing.T) {
-	_, _, err := resolveRequestedRuntime("not-a-runtime")
+	_, _, _, err := resolveRequestedRuntime("not-a-runtime")
 	if err == nil {
 		t.Fatal("expected invalid runtime error")
 	}

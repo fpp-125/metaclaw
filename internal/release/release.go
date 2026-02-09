@@ -21,11 +21,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metaclaw/metaclaw/internal/capsule"
-	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
-	"github.com/metaclaw/metaclaw/internal/compiler"
-	"github.com/metaclaw/metaclaw/internal/locks"
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/capsule"
+	v1 "github.com/fpp-125/metaclaw/internal/claw/schema/v1"
+	"github.com/fpp-125/metaclaw/internal/compiler"
+	"github.com/fpp-125/metaclaw/internal/locks"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 type CreateOptions struct {

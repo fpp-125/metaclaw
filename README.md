@@ -17,9 +17,9 @@ metaclaw quickstart obsidian \
 
 ## Positioning
 
-MetaClaw：让强大的 Agent 自动化同时具备安全性、可治理性与可复现性。
+让强大的 Agent 自动化同时具备安全性、可治理性与可复现性。
 
-MetaClaw: make powerful agents operationally safe, governable, and reproducible.
+Make powerful agents operationally safe, governable, and reproducible.
 
 从 LLM，到代理应用（如 Manus），再到以 OpenClaw 为代表的“全托管式 Agent 执行”，行业正在从“概率生成与推理能力”走向“可直接执行任务的自动化系统”。能力边界显著扩张的同时，也引入了新的系统性成本：安全边界更难收敛、运行与治理复杂度上升、平台工程容易走向过重。MetaClaw 的定位，就是在“能力”与“可控性”之间提供一条更稳健的中线方案。
 

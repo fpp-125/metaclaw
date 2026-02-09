@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/metaclaw/metaclaw/internal/locks"
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/locks"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 type Manifest struct {

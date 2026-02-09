@@ -3,12 +3,15 @@ package applecontainer
 import (
 	"testing"
 
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 func TestPolicyFlagsUseEnvKeysWithoutInliningSecrets(t *testing.T) {
 	p := policy.Policy{
 		Network: policy.NetworkPolicy{Mode: "none", Allowed: false},
+		EnvAllowlist: []string{
+			"OPENAI_API_KEY",
+		},
 	}
 	env := map[string]string{
 		"OPENAI_API_KEY": "not-in-args",

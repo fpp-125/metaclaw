@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	goruntime "runtime"
 	"sort"
 	"strings"
+	"time"
 )
 
 type doctorCheck struct {
@@ -326,13 +328,14 @@ func collectDoctorReport(opts doctorOptions) (doctorReport, error) {
 		report.Checks = append(report.Checks, doctorCheck{Name: name, Status: status, Detail: detail})
 	}
 
-	runtimeTarget, runtimeBin, err := resolveRequestedRuntime(opts.Runtime)
+	runtimeTarget, runtimeBin, runtimeHealth, err := resolveRequestedRuntime(opts.Runtime)
 	if err != nil {
 		add("runtime", doctorStatusFail, err.Error())
 	} else {
 		report.SelectedRuntime = runtimeTarget
 		report.RuntimeBin = runtimeBin
 		add("runtime", doctorStatusPass, fmt.Sprintf("%s (%s)", runtimeTarget, runtimeBin))
+		add("runtime_health", doctorStatusPass, runtimeHealth)
 	}
 
 	if strings.TrimSpace(opts.VaultPath) != "" {
@@ -422,28 +425,43 @@ func printDoctorReport(report doctorReport) {
 	}
 }
 
-func resolveRequestedRuntime(requested string) (string, string, error) {
+func resolveRequestedRuntime(requested string) (string, string, string, error) {
 	rt := strings.TrimSpace(requested)
 	if rt == "" {
 		rt = "auto"
 	}
 	if rt == "auto" {
+		var errs []string
+		found := false
 		for _, candidate := range runtimeProbeOrder() {
 			bin := runtimeBinaryForTarget(candidate)
-			if commandExists(bin) {
-				return candidate, bin, nil
+			if bin == "" || !commandExists(bin) {
+				continue
 			}
+			found = true
+			detail, err := checkRuntimeHealth(candidate, bin)
+			if err == nil {
+				return candidate, bin, detail, nil
+			}
+			errs = append(errs, fmt.Sprintf("%s: %v", candidate, err))
 		}
-		return "", "", errors.New("no supported runtime found (install apple container, podman, or docker)")
+		if found {
+			return "", "", "", fmt.Errorf("no healthy runtime found (tried %s)", strings.Join(errs, "; "))
+		}
+		return "", "", "", errors.New("no supported runtime found (install apple container, podman, or docker)")
 	}
 	bin := runtimeBinaryForTarget(rt)
 	if bin == "" {
-		return "", "", fmt.Errorf("invalid runtime %q", rt)
+		return "", "", "", fmt.Errorf("invalid runtime %q", rt)
 	}
 	if !commandExists(bin) {
-		return "", "", fmt.Errorf("runtime %s is not available (missing binary: %s)", rt, bin)
+		return "", "", "", fmt.Errorf("runtime %s is not available (missing binary: %s)", rt, bin)
 	}
-	return rt, bin, nil
+	detail, err := checkRuntimeHealth(rt, bin)
+	if err != nil {
+		return "", "", "", fmt.Errorf("runtime %s is installed but not usable: %v", rt, err)
+	}
+	return rt, bin, detail, nil
 }
 
 func runtimeProbeOrder() []string {
@@ -503,6 +521,97 @@ func resolveObsidianProfile(name string) (obsidianProfile, bool) {
 	}
 	p, ok := obsidianProfiles[n]
 	return p, ok
+}
+
+func checkRuntimeHealth(target, bin string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+
+	firstLine := func(s string) string {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return ""
+		}
+		if i := strings.IndexByte(s, '\n'); i >= 0 {
+			return strings.TrimSpace(s[:i])
+		}
+		return s
+	}
+
+	switch target {
+	case "docker":
+		stdout, stderr, err := runDoctorCmd(ctx, bin, "info", "--format", "{{.ServerVersion}}")
+		if err != nil {
+			msg := firstLine(stderr)
+			if msg == "" {
+				msg = firstLine(stdout)
+			}
+			if msg == "" {
+				msg = err.Error()
+			}
+			return "", fmt.Errorf("docker daemon not reachable (%s)", msg)
+		}
+		version := firstLine(stdout)
+		if version == "" {
+			return "docker daemon reachable", nil
+		}
+		return fmt.Sprintf("docker daemon reachable (server %s)", version), nil
+	case "podman":
+		// Prefer a small formatted output, but fall back to plain `podman info` for older installs.
+		stdout, stderr, err := runDoctorCmd(ctx, bin, "info", "--format", "{{.Version.Version}}")
+		if err != nil {
+			stdout, stderr, err = runDoctorCmd(ctx, bin, "info")
+		}
+		if err != nil {
+			msg := firstLine(stderr)
+			if msg == "" {
+				msg = firstLine(stdout)
+			}
+			if msg == "" {
+				msg = err.Error()
+			}
+			help := msg
+			low := strings.ToLower(help)
+			if strings.Contains(low, "machine") && strings.Contains(low, "start") {
+				help = msg + " (try: podman machine start)"
+			}
+			return "", fmt.Errorf("podman not reachable (%s)", help)
+		}
+		return "podman reachable", nil
+	case "apple_container":
+		// Apple Container should at least report a version; some environments require permissions on first run.
+		stdout, stderr, err := runDoctorCmd(ctx, bin, "--version")
+		if err != nil {
+			stdout, stderr, err = runDoctorCmd(ctx, bin, "version")
+		}
+		if err != nil {
+			msg := firstLine(stderr)
+			if msg == "" {
+				msg = firstLine(stdout)
+			}
+			if msg == "" {
+				msg = err.Error()
+			}
+			return "", fmt.Errorf("apple container not reachable (%s)", msg)
+		}
+		v := firstLine(stdout)
+		if v == "" {
+			return "apple container reachable", nil
+		}
+		return fmt.Sprintf("apple container reachable (%s)", v), nil
+	default:
+		return "ok", nil
+	}
+}
+
+func runDoctorCmd(ctx context.Context, bin string, args ...string) (string, string, error) {
+	cmd := exec.CommandContext(ctx, bin, args...)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	err := cmd.Run()
+	return out.String(), errBuf.String(), err
 }
 
 func promptQuickstartVaultPath() (string, error) {

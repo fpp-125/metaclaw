@@ -3,12 +3,15 @@ package podman
 import (
 	"testing"
 
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 func TestPolicyFlagsUseEnvKeysWithoutInliningSecrets(t *testing.T) {
 	p := policy.Policy{
 		Network: policy.NetworkPolicy{Mode: "all", Allowed: true},
+		EnvAllowlist: []string{
+			"GEMINI_API_KEY",
+		},
 	}
 	env := map[string]string{
 		"GEMINI_API_KEY": "top-secret",

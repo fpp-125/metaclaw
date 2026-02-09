@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metaclaw/metaclaw/internal/capsule"
-	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
-	"github.com/metaclaw/metaclaw/internal/compiler"
-	"github.com/metaclaw/metaclaw/internal/llm"
-	"github.com/metaclaw/metaclaw/internal/logs"
-	"github.com/metaclaw/metaclaw/internal/policy"
-	"github.com/metaclaw/metaclaw/internal/runtime"
-	"github.com/metaclaw/metaclaw/internal/runtime/spec"
-	store "github.com/metaclaw/metaclaw/internal/store/sqlite"
+	"github.com/fpp-125/metaclaw/internal/capsule"
+	v1 "github.com/fpp-125/metaclaw/internal/claw/schema/v1"
+	"github.com/fpp-125/metaclaw/internal/compiler"
+	"github.com/fpp-125/metaclaw/internal/llm"
+	"github.com/fpp-125/metaclaw/internal/logs"
+	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/runtime"
+	"github.com/fpp-125/metaclaw/internal/runtime/spec"
+	store "github.com/fpp-125/metaclaw/internal/store/sqlite"
 )
 
 type Manager struct {
@@ -85,6 +85,22 @@ func (m *Manager) Run(ctx context.Context, opts RunOptions) (store.RunRecord, er
 		return store.RunRecord{}, err
 	}
 	env := mergeEnv(cfg.Agent.Habitat.Env, resolvedLLM.Env, resolvedSecrets)
+	allowed := make(map[string]struct{}, len(pol.EnvAllowlist))
+	for _, k := range pol.EnvAllowlist {
+		allowed[k] = struct{}{}
+	}
+	for k := range resolvedSecrets {
+		if _, ok := allowed[k]; !ok {
+			return store.RunRecord{}, fmt.Errorf("secret env %s is not allowlisted by agent policy (declare it in agent.habitat.env to inject at runtime)", k)
+		}
+	}
+	for k := range resolvedLLM.Env {
+		if _, ok := allowed[k]; !ok {
+			// This should not happen: llm.AllowedEnvKeys is part of the allowlist computation.
+			return store.RunRecord{}, fmt.Errorf("internal error: llm env %s is not allowlisted by agent policy", k)
+		}
+	}
+	env = filterEnvAllowlist(env, allowed)
 
 	runID := makeRunID()
 	rec := store.RunRecord{
@@ -337,6 +353,19 @@ func mergeEnvMany(maps ...map[string]string) map[string]string {
 	out := make(map[string]string, total)
 	for _, m := range maps {
 		for k, v := range m {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func filterEnvAllowlist(env map[string]string, allow map[string]struct{}) map[string]string {
+	if len(env) == 0 || len(allow) == 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(env))
+	for k, v := range env {
+		if _, ok := allow[k]; ok {
 			out[k] = v
 		}
 	}

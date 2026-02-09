@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	v1 "github.com/metaclaw/metaclaw/internal/claw/schema/v1"
-	"github.com/metaclaw/metaclaw/internal/llm"
+	v1 "github.com/fpp-125/metaclaw/internal/claw/schema/v1"
+	"github.com/fpp-125/metaclaw/internal/llm"
 )
 
 type Policy struct {

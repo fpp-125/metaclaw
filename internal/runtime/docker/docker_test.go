@@ -3,7 +3,7 @@ package docker
 import (
 	"testing"
 
-	"github.com/metaclaw/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/policy"
 )
 
 func TestPolicyFlagsUseEnvKeysWithoutInliningSecrets(t *testing.T) {
@@ -12,6 +12,7 @@ func TestPolicyFlagsUseEnvKeysWithoutInliningSecrets(t *testing.T) {
 		Mounts: []policy.MountPolicy{
 			{Source: "/host", Target: "/ctr", ReadOnly: true},
 		},
+		EnvAllowlist: []string{"FOO", "OPENAI_API_KEY"},
 	}
 	env := map[string]string{
 		"OPENAI_API_KEY": "super-secret-value",

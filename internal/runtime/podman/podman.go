@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/metaclaw/metaclaw/internal/policy"
-	"github.com/metaclaw/metaclaw/internal/runtime/spec"
+	"github.com/fpp-125/metaclaw/internal/policy"
+	"github.com/fpp-125/metaclaw/internal/runtime/spec"
 )
 
 type Adapter struct{}
@@ -86,9 +86,15 @@ func policyFlags(p policy.Policy, env map[string]string, workdir, user, cpu, mem
 		}
 		args = append(args, "-v", v)
 	}
+	allow := make(map[string]struct{}, len(p.EnvAllowlist))
+	for _, k := range p.EnvAllowlist {
+		allow[k] = struct{}{}
+	}
 	keys := make([]string, 0, len(env))
 	for k := range env {
-		keys = append(keys, k)
+		if _, ok := allow[k]; ok {
+			keys = append(keys, k)
+		}
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
