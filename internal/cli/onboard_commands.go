@@ -227,19 +227,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	}
 	in.Profile = profile
 
-	llmEnv, err := promptLine(reader, os.Stderr, "LLM key env name", in.LLMKeyEnv)
-	if err != nil {
-		return in, err
-	}
-	in.LLMKeyEnv = llmEnv
-
-	webEnv, err := promptLine(reader, os.Stderr, "Web search key env name (optional)", in.WebKeyEnv)
-	if err != nil {
-		return in, err
-	}
-	in.WebKeyEnv = webEnv
-
-	saveEnv, err := promptYesNo(reader, os.Stderr, "Save keys into <project>/.env (gitignored) so you don't need to export every time?", in.SaveEnv)
+	saveEnv, err := promptYesNo(reader, os.Stderr, "Save keys you enter today into <project>/.env (gitignored) so you don't need to export every time?", in.SaveEnv)
 	if err != nil {
 		return in, err
 	}
@@ -284,6 +272,7 @@ func promptLine(r *bufio.Reader, w *os.File, label, defaultValue string) (string
 		if value == "" {
 			value = strings.TrimSpace(defaultValue)
 		}
+		value = stripOuterQuotes(value)
 		if value != "" {
 			return value, nil
 		}
@@ -292,6 +281,16 @@ func promptLine(r *bufio.Reader, w *os.File, label, defaultValue string) (string
 		}
 		fmt.Fprintln(w, "value is required")
 	}
+}
+
+func stripOuterQuotes(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) >= 2 {
+		if (value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"') {
+			return strings.TrimSpace(value[1 : len(value)-1])
+		}
+	}
+	return value
 }
 
 func promptYesNo(r *bufio.Reader, w *os.File, label string, defaultYes bool) (bool, error) {
