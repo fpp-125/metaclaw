@@ -51,6 +51,8 @@ func Execute(args []string) int {
 		return runWizard(args[1:])
 	case "quickstart":
 		return runQuickstart(args[1:])
+	case "onboard":
+		return runOnboard(args[1:])
 	case "doctor":
 		return runDoctor(args[1:])
 	case "help", "-h", "--help":
@@ -195,8 +197,12 @@ func runRun(ctx context.Context, args []string) int {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
-		fmt.Printf("run_id: %s\n", r.RunID)
-		fmt.Printf("status: %s\n", r.Status)
+		if r.RunID != "" {
+			fmt.Printf("run_id: %s\n", r.RunID)
+		}
+		if r.Status != "" {
+			fmt.Printf("status: %s\n", r.Status)
+		}
 		return 1
 	}
 	fmt.Printf("run_id: %s\n", r.RunID)
@@ -422,6 +428,7 @@ commands:
   init
   wizard [--interactive] [--project-dir=./my-bot] [--out=obsidian-bot.claw] [--vault=./vault] [--provider=gemini_openai]
   quickstart obsidian [--project-dir=./my-bot] [--vault=/abs/path/to/vault] [--runtime=auto|apple_container|podman|docker] [--profile=obsidian-chat]
+  onboard obsidian (interactive prompts)
   doctor [--runtime=auto|apple_container|podman|docker] [--vault=/path] [--llm-key-env=OPENAI_FORMAT_API_KEY] [--web-key-env=TAVILY_API_KEY]
   validate <file.claw>
   compile <file.claw> [-o dir]

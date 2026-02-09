@@ -4,4 +4,5 @@
 *.out
 /tmp/
 /metaclaw
+/bin/
 .DS_Store

@@ -543,20 +543,22 @@ func checkRuntimeHealth(target, bin string) (string, error) {
 
 	switch target {
 	case "docker":
-		stdout, stderr, err := runDoctorCmd(ctx, bin, "info", "--format", "{{.ServerVersion}}")
-		if err != nil {
+		// `docker info` sometimes exits 0 while still printing a connectivity error on stderr,
+		// so we rely on the server version field from `docker version` instead.
+		stdout, stderr, err := runDoctorCmd(ctx, bin, "version", "--format", "{{.Server.Version}}")
+		version := firstLine(stdout)
+		if err != nil || version == "" || strings.Contains(strings.ToLower(stderr), "cannot connect to the docker daemon") {
 			msg := firstLine(stderr)
 			if msg == "" {
 				msg = firstLine(stdout)
 			}
-			if msg == "" {
+			if msg == "" && err != nil {
 				msg = err.Error()
 			}
+			if msg == "" {
+				msg = "unknown error"
+			}
 			return "", fmt.Errorf("docker daemon not reachable (%s)", msg)
-		}
-		version := firstLine(stdout)
-		if version == "" {
-			return "docker daemon reachable", nil
 		}
 		return fmt.Sprintf("docker daemon reachable (server %s)", version), nil
 	case "podman":
@@ -812,6 +814,9 @@ func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, ll
 	if err := writeQuickstartEnvExample(filepath.Join(projectDir, ".env.example"), llmKeyEnv, webKeyEnv); err != nil {
 		return err
 	}
+	if err := writeQuickstartGitignore(filepath.Join(projectDir, ".gitignore")); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -902,6 +907,24 @@ func rewriteQuickstartChatScript(path, hostDataDir, llmKeyEnv, webKeyEnv, runtim
 	text := string(b)
 	text = strings.Replace(text, "${BOT_RENDER_MODE:-glow}", "${BOT_RENDER_MODE:-"+profile.RenderMode+"}", 1)
 	text = strings.Replace(text, "${BOT_NETWORK_MODE:-none}", "${BOT_NETWORK_MODE:-"+profile.NetworkMode+"}", 1)
+
+	// Optional local env file for convenience. It is gitignored by quickstart and should never be committed.
+	if !strings.Contains(text, "$PROJECT_DIR/.env") {
+		marker := "PROJECT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\""
+		block := strings.Join([]string{
+			`# Load project-local secrets (never commit .env)`,
+			`if [ -f "$PROJECT_DIR/.env" ]; then`,
+			`  set -a`,
+			`  . "$PROJECT_DIR/.env"`,
+			`  set +a`,
+			`fi`,
+		}, "\n")
+		if strings.Contains(text, marker) {
+			text = strings.Replace(text, marker, marker+"\n"+block, 1)
+		} else {
+			text = block + "\n" + text
+		}
+	}
 
 	injection := strings.Join([]string{
 		"export BOT_HOST_DATA_DIR=\"${BOT_HOST_DATA_DIR:-$PROJECT_DIR/.metaclaw}\"",
@@ -997,6 +1020,29 @@ func writeQuickstartEnvExample(path, llmKeyEnv, webKeyEnv string) error {
 	}, "\n")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write .env.example: %w", err)
+	}
+	return nil
+}
+
+func writeQuickstartGitignore(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	content := strings.Join([]string{
+		"# MetaClaw local state",
+		".metaclaw/",
+		"",
+		"# Local secrets (never commit)",
+		".env",
+		".env.*",
+		"",
+		"# Python",
+		"__pycache__/",
+		"*.pyc",
+		"",
+	}, "\n")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("write .gitignore: %w", err)
 	}
 	return nil
 }

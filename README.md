@@ -2,17 +2,36 @@
 
 For a faster start, clone the repo and ask your AI assistant to walk you through setup and commands.
 
-## 60-Second Start
+## Quick Start with Obsidian Bot Example
+
+Prereqs:
+- Go (to build the `metaclaw` binary)
+- `git`
+- `python3`
+- One container runtime: Apple Container (`container`), Podman (`podman`), or Docker (`docker`)
+- `jq` (required only if you build with Apple Container)
+- `glow` (optional, for nicer Markdown rendering in the example TUI)
 
 ```bash
-# 1) Check runtime + keys + vault path
-metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT --llm-key-env=OPENAI_FORMAT_API_KEY
+# 0) Build the engine binary
+go build -o ./bin/metaclaw ./cmd/metaclaw
 
-# 2) Bootstrap, configure, build, and enter chat
-metaclaw quickstart obsidian \
+# 1) Export runtime-only keys and run a quick health check
+export OPENAI_FORMAT_API_KEY=...
+export TAVILY_API_KEY=...   # optional (only needed for web search)
+./bin/metaclaw doctor --runtime=auto --vault=/ABS/PATH/TO/OBSIDIAN_VAULT --llm-key-env=OPENAI_FORMAT_API_KEY
+
+# 2) Create a bot project and enter chat
+./bin/metaclaw quickstart obsidian \
   --project-dir=./my-obsidian-bot \
   --vault=/ABS/PATH/TO/OBSIDIAN_VAULT \
   --profile=obsidian-chat
+```
+
+Prefer a step-by-step prompt flow (and optional `.env` setup)? Run:
+
+```bash
+./bin/metaclaw onboard obsidian
 ```
 
 ## Positioning
@@ -114,7 +133,7 @@ RUNTIME_BIN=container ./build_image.sh
 # RUNTIME_BIN=podman ./build_image.sh
 
 # 5) Set API keys and run
-export GEMINI_API_KEY='...'
+export OPENAI_FORMAT_API_KEY='...'
 export TAVILY_API_KEY='...'   # optional
 
 METACLAW_BIN="/ABS/PATH/TO/metaclaw/metaclaw" \
@@ -153,10 +172,10 @@ metaclaw run agent.claw
 metaclaw run agent.claw --detach
 
 # Inject LLM key at runtime (recommended secret hygiene)
-metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY
+metaclaw run agent.claw --llm-api-key-env=OPENAI_FORMAT_API_KEY
 
 # Inject additional runtime-only secrets (repeatable)
-metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY --secret-env=TAVILY_API_KEY
+metaclaw run agent.claw --llm-api-key-env=OPENAI_FORMAT_API_KEY --secret-env=TAVILY_API_KEY
 ```
 
 Runtime control and debugging:
@@ -232,8 +251,11 @@ agent:
 At run time, inject key from host env:
 
 ```bash
-metaclaw run agent.claw --llm-api-key-env=GEMINI_API_KEY
+export OPENAI_FORMAT_API_KEY=...
+metaclaw run agent.claw --llm-api-key-env=OPENAI_FORMAT_API_KEY
 ```
+
+MetaClaw will mirror the resolved key into the provider-required env inside the runtime (for example `GEMINI_API_KEY`) and also into `OPENAI_API_KEY` for OpenAI-compatible clients.
 
 For OpenAI-compatible clients inside the container, MetaClaw mirrors:
 - `OPENAI_API_KEY`
@@ -340,3 +362,9 @@ METACLAW_TEST_RUNTIME=docker go test -tags=integration ./internal/manager -run T
 ```bash
 ./scripts/test-multirepo.sh
 ```
+
+## Troubleshooting
+
+- Docker: if `metaclaw doctor` reports “docker daemon not reachable”, start Docker Desktop (or your Docker daemon), then confirm `docker version` works.
+- Podman (macOS): if Podman is installed but not reachable, start the VM with `podman machine start`, then retry.
+- Apple Container (macOS): the first run may prompt for filesystem access (often shown as `container-runtime-linux` when your project/vault is in iCloud Drive). Allow access so the runtime can read your project and vault mounts, then retry. If you build with Apple Container, `jq` is required for image digest resolution.
