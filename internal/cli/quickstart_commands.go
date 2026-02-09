@@ -728,7 +728,13 @@ func ensureCachedExamplesTemplate() (string, error) {
 	}
 
 	if _, err := os.Stat(repoDir); err == nil {
-		_ = runGit(repoDir, "pull", "--ff-only")
+		// The examples repo may be force-updated while still evolving. Prefer a hard sync to origin/main
+		// so quickstart always uses the latest template when network is available.
+		if err := syncGitRepoToMain(repoDir); err == nil {
+			if ok, err := hasObsidianTemplate(templateDir); err == nil && ok {
+				return templateDir, nil
+			}
+		}
 		if ok, err := hasObsidianTemplate(templateDir); err == nil && ok {
 			return templateDir, nil
 		}
@@ -751,6 +757,19 @@ func runGit(dir string, args ...string) error {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	return cmd.Run()
+}
+
+func syncGitRepoToMain(repoDir string) error {
+	// Keep these best-effort and quiet: if network is unavailable, quickstart should still work
+	// with whatever template is already cached.
+	if err := runGit(repoDir, "fetch", "--prune", "--depth", "1", "origin", "main"); err != nil {
+		return err
+	}
+	if err := runGit(repoDir, "reset", "--hard", "origin/main"); err != nil {
+		return err
+	}
+	_ = runGit(repoDir, "clean", "-fdx")
+	return nil
 }
 
 func scaffoldObsidianProject(templateDir, projectDir, vaultPath, hostDataDir, llmKeyEnv, webKeyEnv, runtimeTarget string, profile obsidianProfile, force bool) error {
