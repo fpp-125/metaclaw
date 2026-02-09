@@ -230,40 +230,38 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	reader := bufio.NewReader(os.Stdin)
 	var err error
 
-	// Ask for a working directory first. Then both the vault directory and the project directory must live under it.
-	// This keeps prompts short and avoids accidentally placing the bot project inside an existing vault.
+	// Ask for a working directory first. This becomes the bot project directory.
+	// Then ask for an Obsidian vault path with a sensible default under the working directory,
+	// while still allowing users to point at an existing vault elsewhere.
 	// Intentionally no default: users should explicitly choose where the working directory lives.
 	workDir, err := promptLine(reader, os.Stderr, "Working directory (contains both project + vault)", "")
 	if err != nil {
 		return in, err
 	}
-	workAbs, err := filepath.Abs(strings.TrimSpace(workDir))
+	workAbs, err := filepath.Abs(strings.TrimSpace(expandLeadingTilde(workDir)))
 	if err != nil {
 		return in, fmt.Errorf("resolve working directory: %w", err)
 	}
+	in.ProjectDir = workAbs
 
-	// Vault dir (must be under workAbs).
-	vaultDefault := "vault"
-	if strings.TrimSpace(in.VaultPath) != "" {
-		if vAbs, err := filepath.Abs(strings.TrimSpace(in.VaultPath)); err == nil && isSubpath(vAbs, workAbs) && vAbs != workAbs {
-			if rel, err := filepath.Rel(workAbs, vAbs); err == nil && rel != "." {
-				vaultDefault = rel
-			}
-		}
+	// Vault path: default under working dir, but allow an absolute path elsewhere.
+	vaultDefault := strings.TrimSpace(in.VaultPath)
+	if vaultDefault == "" {
+		vaultDefault = filepath.Join(workAbs, "vault")
 	}
 	var vaultAbs string
 	for {
-		vaultInput, err := promptLine(reader, os.Stderr, "Vault directory (under working dir)", vaultDefault)
+		vaultInput, err := promptLine(reader, os.Stderr, "Obsidian vault path", vaultDefault)
 		if err != nil {
 			return in, err
 		}
-		vaultAbs, err = resolvePathUnderDir(workAbs, vaultInput)
+		vaultAbs, err = resolvePathFromDir(workAbs, expandLeadingTilde(vaultInput))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "vault directory: %v\n", err)
+			fmt.Fprintf(os.Stderr, "vault path: %v\n", err)
 			continue
 		}
 		if vaultAbs == workAbs {
-			fmt.Fprintln(os.Stderr, "vault directory must be a subdirectory (not the working dir itself)")
+			fmt.Fprintln(os.Stderr, "vault path must be different from the working directory")
 			continue
 		}
 
@@ -294,60 +292,10 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	}
 	in.VaultPath = vaultAbs
 
-	// Project dir (must be under workAbs). Default as a sibling of the vault.
-	projectDefault := "bot"
-	if strings.TrimSpace(in.ProjectDir) != "" && strings.TrimSpace(in.ProjectDir) != "./my-obsidian-bot" {
-		if pAbs, err := filepath.Abs(strings.TrimSpace(in.ProjectDir)); err == nil && isSubpath(pAbs, workAbs) && pAbs != workAbs {
-			if rel, err := filepath.Rel(workAbs, pAbs); err == nil && rel != "." {
-				projectDefault = rel
-			}
-		}
-	}
-	for {
-		projectInput, err := promptLine(reader, os.Stderr, "Project directory (under working dir)", projectDefault)
-		if err != nil {
-			return in, err
-		}
-		projectAbs, err := resolvePathUnderDir(workAbs, projectInput)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "project directory: %v\n", err)
-			continue
-		}
-		if projectAbs == workAbs {
-			fmt.Fprintln(os.Stderr, "project directory must be a subdirectory (not the working dir itself)")
-			continue
-		}
-		if projectAbs == vaultAbs {
-			fmt.Fprintln(os.Stderr, "project directory must be different from the vault directory")
-			continue
-		}
-
-		// Warn early (right after directory selection) so users don't proceed through multiple menus only to fail later.
-		if isSubpath(projectAbs, vaultAbs) {
-			fmt.Fprintf(os.Stderr, "warning: project directory is inside your vault (%s). Recommended: keep them separate.\n", vaultAbs)
-			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", false)
-			if err != nil {
-				return in, err
-			}
-			if !ok {
-				projectDefault = projectInput
-				continue
-			}
-		}
-		if isSubpath(vaultAbs, projectAbs) {
-			fmt.Fprintf(os.Stderr, "warning: vault path is inside the project directory (%s). Recommended: keep them separate.\n", projectAbs)
-			ok, err := promptSelectBool(os.Stderr, "Continue anyway?", true)
-			if err != nil {
-				return in, err
-			}
-			if !ok {
-				projectDefault = projectInput
-				continue
-			}
-		}
-
-		in.ProjectDir = projectAbs
-		break
+	// Optional warning: putting the project inside the vault can clutter notes and creates overlapping host paths.
+	// (The default flow keeps the vault under the project, which is fine.)
+	if isSubpath(workAbs, vaultAbs) && workAbs != vaultAbs {
+		fmt.Fprintf(os.Stderr, "warning: working directory is inside your vault (%s). Recommended: keep them separate.\n", vaultAbs)
 	}
 
 	vaultAccess, err := promptSelect(os.Stderr, "Vault access", []string{"read-only (recommended)", "read-write (less safe)"}, "read-only (recommended)")
@@ -400,7 +348,7 @@ func collectOnboardInteractiveOptions(in onboardOptions) (onboardOptions, error)
 	return in, nil
 }
 
-func resolvePathUnderDir(baseAbs, userInput string) (string, error) {
+func resolvePathFromDir(baseAbs, userInput string) (string, error) {
 	baseAbs = filepath.Clean(strings.TrimSpace(baseAbs))
 	if baseAbs == "" {
 		return "", errors.New("missing working directory")
@@ -409,6 +357,7 @@ func resolvePathUnderDir(baseAbs, userInput string) (string, error) {
 	if value == "" {
 		return "", errors.New("value is required")
 	}
+	value = expandLeadingTilde(value)
 
 	var abs string
 	var err error
@@ -424,10 +373,28 @@ func resolvePathUnderDir(baseAbs, userInput string) (string, error) {
 		}
 	}
 
-	if !isSubpath(abs, baseAbs) {
-		return "", fmt.Errorf("must be inside working dir (%s)", baseAbs)
-	}
 	return abs, nil
+}
+
+func expandLeadingTilde(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || value[0] != '~' {
+		return value
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return value
+	}
+	if value == "~" {
+		return home
+	}
+	if strings.HasPrefix(value, "~"+string(os.PathSeparator)) {
+		return filepath.Join(home, value[2:])
+	}
+	if strings.HasPrefix(value, "~/") {
+		return filepath.Join(home, value[2:])
+	}
+	return value
 }
 
 func promptLine(r *bufio.Reader, w *os.File, label, defaultValue string) (string, error) {
