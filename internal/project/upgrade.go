@@ -96,15 +96,39 @@ func Upgrade(opts UpgradeOptions) (UpgradeResult, error) {
 			continue
 		}
 
+		// Precompute src hash so we can:
+		// 1) skip copying when dst already matches src
+		// 2) avoid false "conflicts" when the user already updated the file to the latest template.
+		srcSum, srcSumErr := sha256File(src)
+		if srcSumErr != nil {
+			return out, fmt.Errorf("hash template file %s: %w", rel, srcSumErr)
+		}
+
+		existed, err := fileExists(dst)
+		if err != nil {
+			return out, err
+		}
+
+		var dstSum string
+		if existed {
+			if sum, err := sha256File(dst); err == nil {
+				dstSum = sum
+			}
+		}
+
 		// Detect local modification (best-effort).
 		if lockErr == nil {
 			if prev, ok := managedHashes[rel]; ok && prev != "" {
-				if cur, err := sha256File(dst); err == nil {
-					if cur != prev && !opts.Force {
+				// Only a conflict if:
+				// - dst has changed since last upgrade (cur != prev), AND
+				// - dst does NOT already match the current template (cur != srcSum).
+				// If dst == srcSum, the user effectively already applied the upgrade and we should not block.
+				if existed && dstSum != "" {
+					if dstSum != prev && dstSum != srcSum && !opts.Force {
 						out.Conflicts = append(out.Conflicts, rel)
 						continue
 					}
-					if cur != prev && opts.Force {
+					if dstSum != prev && dstSum != srcSum && opts.Force {
 						if !opts.DryRun {
 							if err := backupFile(dst, filepath.Join(backupRoot, filepath.FromSlash(rel))); err != nil {
 								return out, err
@@ -115,10 +139,18 @@ func Upgrade(opts UpgradeOptions) (UpgradeResult, error) {
 			}
 		}
 
-		existed, err := fileExists(dst)
-		if err != nil {
-			return out, err
+		// If dst already matches the template, don't rewrite it (avoids noisy "updated: N" output and
+		// preserves timestamps for users that care about them).
+		if existed && dstSum != "" && dstSum == srcSum {
+			if opts.DryRun {
+				out.Skipped = append(out.Skipped, rel)
+			} else {
+				out.Skipped = append(out.Skipped, rel)
+				managedHashes[rel] = dstSum
+			}
+			continue
 		}
+
 		if opts.DryRun {
 			if existed {
 				out.Updated = append(out.Updated, rel)
@@ -137,8 +169,12 @@ func Upgrade(opts UpgradeOptions) (UpgradeResult, error) {
 			out.Added = append(out.Added, rel)
 		}
 
+		// The post-copy hash should match srcSum; we store the destination hash to keep the lock
+		// resilient if future template hashing changes.
 		if sum, err := sha256File(dst); err == nil {
 			managedHashes[rel] = sum
+		} else {
+			managedHashes[rel] = srcSum
 		}
 	}
 
